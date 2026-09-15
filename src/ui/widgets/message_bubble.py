@@ -75,6 +75,9 @@ def _format_badge_text(role: str, has_icon: bool = False) -> str:
     return role
 
 
+_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
+
 class MessageBubble(tk.Frame):
     def __init__(self, parent: tk.Widget, role: str, content: str,
                  bg_card: str, hdr_color: str,
@@ -99,6 +102,8 @@ class MessageBubble(tk.Frame):
         self._is_thinking = is_thinking
         self._start_time = time.monotonic() if is_thinking else 0.0
         self._process_expanded = False
+        self._spinner_idx = 0
+        self._thinking_text = "กำลังคิดและประมวลผล..."
         self.pack(fill="x", padx=16, pady=(0, 10))
 
         # Header bar
@@ -161,7 +166,7 @@ class MessageBubble(tk.Frame):
 
         self._process_header_btn = tk.Button(
             self._process_container,
-            text="⚡ กำลังคิดและประมวลผล...",
+            text="⠋ กำลังคิดและประมวลผล...",
             font=FONT_TINY,
             bg=T.get("bg2", "#282a2c"),
             fg=T.get("sub", "#9aa0a6"),
@@ -177,6 +182,7 @@ class MessageBubble(tk.Frame):
         if is_thinking:
             self._process_container.pack(fill="x", pady=(0, 6))
             self._process_header_btn.pack(fill="x", pady=(0, 4))
+            self.after(90, self._animate_spinner)
 
         self._steps_frame = tk.Frame(self._process_container, bg=T.get("bg2", "#282a2c"), padx=10, pady=8,
                                      highlightthickness=1, highlightbackground=T.get("border", "#3c4043"))
@@ -408,11 +414,31 @@ class MessageBubble(tk.Frame):
             code_box.configure(state="disabled")
             code_box.pack(fill="x", pady=(3, 0))
 
+    def _animate_spinner(self) -> None:
+        """Continuous rotating spinner animation with elapsed time while thinking."""
+        if not self._is_thinking:
+            return
+        try:
+            if not self.winfo_exists():
+                return
+            frame = _SPINNER_FRAMES[self._spinner_idx % len(_SPINNER_FRAMES)]
+            self._spinner_idx += 1
+            elapsed = time.monotonic() - self._start_time if self._start_time else 0.0
+            count = len(self._steps)
+            step_str = f"  [{count} ขั้นตอน]" if count > 0 else ""
+            self._process_header_btn.configure(text=f"{frame} {self._thinking_text} ({elapsed:.1f}s){step_str}")
+            self.after(90, self._animate_spinner)
+        except Exception:
+            pass
+
     def update_thinking_status(self, text: str) -> None:
         """Update live status text while thinking."""
+        self._thinking_text = text
         self._process_container.pack(fill="x", pady=(0, 6), before=self.body)
         self._process_header_btn.pack(fill="x", pady=(0, 4))
-        self._process_header_btn.configure(text=f"⚡ {text}")
+        frame = _SPINNER_FRAMES[self._spinner_idx % len(_SPINNER_FRAMES)]
+        elapsed = time.monotonic() - self._start_time if self._start_time else 0.0
+        self._process_header_btn.configure(text=f"{frame} {text} ({elapsed:.1f}s)")
 
     def finish_processing(self, final_text: str, role: str = "AI", elapsed_sec: float = 0.0) -> None:
         """Called when AI generation and tool calling loops finish."""

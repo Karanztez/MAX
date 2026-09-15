@@ -18,15 +18,44 @@ GEMINI_MODELS = [
 ]
 
 CLAUDE_MODELS = [
-    "claude-haiku-4-5-20251001",
     "claude-sonnet-4-6",
-    "claude-sonnet-5",
     "claude-opus-4-6",
+    "claude-opus-4-6-thinking",
+    "claude-haiku-4-5-20251001",
+    "claude-opus-4-5-20251101",
+    "claude-sonnet-5",
     "claude-opus-4-7",
     "claude-opus-4-8",
     "claude-opus-5",
-    "claude-fable-5",
-    "claude-fable-5-1",
+]
+
+CHINESE_SPECIALS_MODELS = [
+    "deepseek-v4.1-flash",
+    "glm-5.3",
+    "glm-5.3-flash",
+    "glm-5.2",
+    "glm-5.1",
+    "kimi-k3",
+    "kimi-k2.7-code",
+    "kimi-k2.6",
+    "qwen3.8-max",
+    "qwen3.8-flash",
+    "qwen3.7-max",
+    "deepseek-v4-pro-0813",
+    "deepseek-v4-flash-0731",
+    "deepseek-v4-flash-vision-exp",
+    "minimax-m3",
+    "minimax-m2.7-highspeed",
+    "minimax-m2.7",
+    "mimo-v2.5-pro",
+    "mimo-v2.5",
+    "hy4-preview",
+    "hy3",
+]
+
+GROK_MODELS = [
+    "grok-4.6",
+    "grok-4.5",
 ]
 
 OPENAI_MODELS = [
@@ -41,6 +70,33 @@ OPENAI_MODELS = [
 def default_profiles() -> list[dict[str, Any]]:
     return [
         {
+            "id": "maxplus-chinese-specials",
+            "name": "Chinese Specials",
+            "base_url": "https://api.maxplus-ai.cc/chinese-specials/v1",
+            "api_mode": "chat_completions",
+            "api_key": "",
+            "models": list(CHINESE_SPECIALS_MODELS),
+            "model": CHINESE_SPECIALS_MODELS[0],
+        },
+        {
+            "id": "maxplus-grok-heavy",
+            "name": "Grok Heavy",
+            "base_url": "https://api.maxplus-ai.cc/grok-heavy-claude-code/v1",
+            "api_mode": "chat_completions",
+            "api_key": "",
+            "models": list(GROK_MODELS),
+            "model": GROK_MODELS[0],
+        },
+        {
+            "id": "maxplus-claude",
+            "name": "Claude Cursor Full",
+            "base_url": "https://api.maxplus-ai.cc/claude-cursor-full/v1",
+            "api_mode": "chat_completions",
+            "api_key": "",
+            "models": list(CLAUDE_MODELS),
+            "model": "claude-sonnet-4-6",
+        },
+        {
             "id": "maxplus-gemini",
             "name": "MaxPlus Gemini",
             "base_url": "https://api.maxplus-ai.cc/gemini-full/v1",
@@ -48,15 +104,6 @@ def default_profiles() -> list[dict[str, Any]]:
             "api_key": "",
             "models": list(GEMINI_MODELS),
             "model": GEMINI_MODELS[0],
-        },
-        {
-            "id": "maxplus-claude",
-            "name": "MaxPlus Claude",
-            "base_url": "https://api.maxplus-ai.cc/claude-cursor-full/v1",
-            "api_mode": "chat_completions",
-            "api_key": "",
-            "models": list(CLAUDE_MODELS),
-            "model": "claude-sonnet-4-6",
         },
         {
             "id": "openai",
