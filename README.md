@@ -1,37 +1,62 @@
 # MAX (MaxPlus AI)
 
-🪶 โปรแกรม AI Assistant สำหรับ Windows พร้อมระบบแนบ/ครอปภาพ, Multi-Provider Profiles, Built-in MCP Tools, Markdown Skills และการตรวจจับบริบทโปรเจกต์อัตโนมัติ
+🪶 ผู้ช่วย AI อัจฉริยะแบบ Cross-Platform (Windows, Linux, macOS, Android Termux) พร้อมระบบ Terminal CLI, Built-in Agent Tools 23 ชนิด, Multi-Provider Profiles, Markdown Skills, และระบบจับภาพหน้าจอ
 
 ---
 
-## ฟีเจอร์หลัก (Key Features)
+## ⚡ ติดตั้งอัตโนมัติใน 1 คำสั่ง (One-Line Automated Install)
 
-- **🎨 Minimalist Theme:** ดีไซน์เรียบหรู พร้อมโหมด Charcoal Grey (`#1e1f20`) และ Clean White (`#ffffff`)
-- **🪶 MAX Identity & Pixel Icon:** โลโก้และไอคอนขนนกพิกเซล พร้อม System Tray และปุ่มคำสั่งสไตล์มินิมอล
-- **📁 Active Project Context:** แถบเลือกโปรเจกต์แบบคลิกเลือกโฟลเดอร์ได้ทันที พร้อม Inject บริบทและโครงสร้างไฟล์ให้โมเดล AI อัตโนมัติ
-- **🖼 Screenshot & Markup Tools:** จับภาพหน้าจอด้วยคีย์ลัด พร้อมเครื่องมือวาดกล่อง/ลูกศร/ไฮไลท์ และคัดลอก DIB Native ทันที
-- **⚡ Multi-Provider & Model Switching:** สลับระหว่าง Gemini, Claude, OpenAI, และ Custom Profile ได้ทันทีจากแถบด้านบน
-- **🔒 Windows DPAPI Encryption:** เข้ารหัสความปลอดภัย API Key ด้วยชิปความปลอดภัยเฉพาะเครื่อง Windows
-- **🧩 Skills System:** โหลดชุดคำสั่งและเชี่ยวชาญเฉพาะทางจาก `skills/*/SKILL.md` (เช่น `blender-3d`, `pixel-artist`, `overblock-minecraft`, `code-reviewer`)
-- **🛠 Model Context Protocol (MCP):** รองรับ Tool Calling อัตโนมัติและเชื่อมต่อ Stdio MCP Server
-
----
-
-## การติดตั้งและการเริ่มใช้งาน (Getting Started)
-
-### 1. ติดตั้ง Dependencies
-```powershell
-python -m pip install -r requirements.txt
+### 🐧 Linux / macOS / 📱 Android (Termux)
+เปิด Terminal หรือ Termux แล้ววางคำสั่งนี้:
+```bash
+curl -sSL https://raw.githubusercontent.com/Karanztez/MAX/main/install.sh | bash
 ```
 
-### 2. รันโปรแกรม
+### 🪟 Windows (PowerShell)
+เปิด PowerShell แล้ววางคำสั่งนี้:
 ```powershell
-python main.py
+irm https://raw.githubusercontent.com/Karanztez/MAX/main/install.ps1 | iex
 ```
 
 ---
 
-## คีย์ลัด (Shortcuts)
+## 🚀 การเรียกใช้งาน (Usage)
+
+หลังจากติดตั้งแล้ว สามารถเรียกใช้งานคำสั่ง `max` ได้จากทุกที่ใน Terminal:
+
+```bash
+# 1. เปิดโหมด Terminal Interactive Chat (คุยต่อเนื่อง / รันเครื่องมืออัตโนมัติ)
+max
+
+# 2. ยิงคำถามเดียว (Single-shot prompt)
+max -p "ค้นหาข้อมูลเกี่ยวกับ Python 3.14 ล่าสุดให้หน่อย"
+
+# 3. กำหนดโมเดลเฉพาะเจาะจง
+max -m claude-sonnet-4-6 -p "ตรวจสอบไฟล์ในโฟลเดอร์นี้และสรุปโค้ด"
+
+# 4. เปิดหน้าต่าง GUI Desktop (สำหรับเครื่องที่มีหน้าจอ)
+max-gui
+```
+
+---
+
+## 🛠 ฟีเจอร์หลัก (Key Features)
+
+- **🌐 Cross-Platform & Mobile Support:** รองรับเต็มรูปแบบทั้ง Windows GUI, Linux Server, VPS, Docker, macOS และมือถือ Android (Termux)
+- **⚡ Built-in Agent Tools (23 เครื่องมือ):**
+  - **ท่องเว็บ & API:** `search_web`, `fetch_web_content`, `http_request`
+  - **จัดการโค้ด & แก้ไขไฟล์:** `edit_file_snippet` (ผ่าตัดแก้โค้ดเฉพาะจุด), `read_file`, `write_file`, `get_file_info`, `delete_file`, `list_directory`, `search_files` (grep)
+  - **ควบคุมระบบ & คำสั่ง:** `run_command` (Shell runner), `run_python_code` (Sandbox executor), `list_processes`, `get_environment_variable`
+  - **ระบบ Git:** `git_status`, `git_diff`, `git_log`
+  - **ประมวลผลข้อมูล:** `json_format`, `hash_data`, `base64_codec`, `calculate`, `get_current_time`, `get_system_info`
+- **🔒 Cross-Platform Encrypted Storage:** ปลอดภัยด้วย Windows DPAPI บน Windows และ Unix User-only (`chmod 600`) บน Linux/macOS/Termux
+- **⚡ Multi-Provider & Model Switching:** สลับระหว่าง Gemini, Claude Native, Claude Cursor, Chinese Specials, Grok Heavy, GPT PRO Supreme, และ OpenAI ได้ทันที
+- **🧩 Markdown Skills:** โหลดชุดคำสั่งเฉพาะทางจาก `skills/*/SKILL.md` (เช่น `blender-3d`, `pixel-artist`, `overblock-minecraft`, `code-reviewer`)
+- **🎨 Minimalist Desktop GUI:** ดีไซน์เรียบหรู พร้อมโหมด Charcoal Dark & Clean Light พร้อมระบบ Screen Crop & Markup ทันที
+
+---
+
+## ⌨️ คีย์ลัดใน Desktop GUI (Shortcuts)
 
 | คำสั่ง | คีย์ลัด | รายละเอียด |
 | :--- | :--- | :--- |
@@ -40,3 +65,4 @@ python main.py
 | **จับภาพหน้าจอโดยตรง** | `Ctrl + Alt + A` | เปิดหน้าต่าง Screen Crop Overlay |
 | **ยืนยันการแคป** | `Enter` | บันทึกพื้นที่ที่เลือกส่งเข้าห้องแชท |
 | **ยกเลิกการแคป** | `Esc` | ปิดหน้าต่างแคปหน้าจอ |
+

@@ -1,0 +1,33 @@
+from setuptools import setup, find_packages
+from pathlib import Path
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text(encoding="utf-8") if (this_directory / "README.md").exists() else ""
+
+setup(
+    name="max-ai",
+    version="1.0.1",
+    description="MAX AI Agent — Multi-Provider AI Assistant & Autonomous Tool Runner for GUI & Terminal",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    author="Karanztez",
+    url="https://github.com/Karanztez/MAX",
+    packages=find_packages(include=["src", "src.*"]),
+    include_package_data=True,
+    python_requires=">=3.8",
+    install_requires=[
+        "Pillow>=10.0.0",
+        "pystray>=0.19.5; sys_platform == 'win32'",
+    ],
+    entry_points={
+        "console_scripts": [
+            "max=src.cli:run_cli",
+            "max-gui=src.ui.main_window:main",
+        ],
+    },
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    ],
+)
