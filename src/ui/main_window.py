@@ -95,17 +95,42 @@ class MaxPlusGUI(tk.Tk):
         if not _PIL_OK:
             return
         try:
-            icon_png = self._get_asset_path(os.path.join("src", "assets", "icon.png"))
-            if not os.path.exists(icon_png):
-                icon_png = self._get_asset_path("icon.png")
-            if os.path.exists(icon_png):
-                img = Image.open(icon_png).convert("RGBA")
+            # 1. App icon & Taskbar icon (from max_icon.png or icon.png)
+            icon_path = None
+            for cand in ["max_icon.png", "icon.png", "feather.png"]:
+                p = self._get_asset_path(os.path.join("src", "assets", cand))
+                if os.path.exists(p):
+                    icon_path = p
+                    break
+                p_root = self._get_asset_path(cand)
+                if os.path.exists(p_root):
+                    icon_path = p_root
+                    break
+
+            if icon_path and os.path.exists(icon_path):
+                img = Image.open(icon_path).convert("RGBA")
                 self._app_icon_img = img
                 self._app_icon_photo = ImageTk.PhotoImage(img)
                 self.iconphoto(True, self._app_icon_photo)
-                # Header logo 24x20 crisp pixel art
-                logo_resized = img.resize((24, 20), Image.Resampling.NEAREST)
+
+            # 2. Header logo (from max_logo.png or max_icon.png)
+            logo_path = None
+            for cand in ["max_logo.png", "max_icon.png", "icon.png"]:
+                p = self._get_asset_path(os.path.join("src", "assets", cand))
+                if os.path.exists(p):
+                    logo_path = p
+                    break
+
+            if logo_path and os.path.exists(logo_path):
+                logo_img = Image.open(logo_path).convert("RGBA")
+                # Scale smoothly to 26px height preserving aspect ratio
+                aspect = logo_img.width / max(1, logo_img.height)
+                target_h = 24
+                target_w = max(16, int(target_h * aspect))
+                logo_resized = logo_img.resize((target_w, target_h), Image.Resampling.LANCZOS)
                 self._header_logo_photo = ImageTk.PhotoImage(logo_resized)
+
+            # 3. Windows ICO for taskbar/titlebar
             icon_ico = self._get_asset_path(os.path.join("src", "assets", "icon.ico"))
             if not os.path.exists(icon_ico):
                 icon_ico = self._get_asset_path("icon.ico")
@@ -116,6 +141,7 @@ class MaxPlusGUI(tk.Tk):
                     pass
         except Exception:
             pass
+
 
     def _choose_project_folder(self) -> None:
         chosen = filedialog.askdirectory(
@@ -420,8 +446,13 @@ class MaxPlusGUI(tk.Tk):
             return
         if self._app_icon_img is not None:
             icon_image = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-            feather_tray = self._app_icon_img.resize((56, 48), Image.Resampling.NEAREST)
-            icon_image.paste(feather_tray, (4, 8), feather_tray)
+            aspect = self._app_icon_img.width / max(1, self._app_icon_img.height)
+            h = 54
+            w = max(16, min(54, int(h * aspect)))
+            feather_tray = self._app_icon_img.resize((w, h), Image.Resampling.LANCZOS)
+            x = (64 - w) // 2
+            y = (64 - h) // 2
+            icon_image.paste(feather_tray, (x, y), feather_tray)
         else:
             icon_image = Image.new("RGBA", (64, 64), "#11151d")
             draw = ImageDraw.Draw(icon_image)
