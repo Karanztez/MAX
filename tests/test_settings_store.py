@@ -17,18 +17,19 @@ def main() -> None:
         assert "test-secret-key" not in raw
         assert store.load_api_key() == "test-secret-key"
         profiles = default_profiles()
-        profiles[0]["api_key"] = "gemini-secret"
-        profiles[1]["api_key"] = "claude-secret"
-        profiles[2]["api_key"] = "openai-secret"
-        store.save_provider_settings(profiles, "maxplus-claude", remember=True)
+        profiles[0]["api_key"] = "chinese-secret"
+        profiles[1]["api_key"] = "grok-secret"
+        profiles[2]["api_key"] = "claude-cursor-secret"
+        target_id = profiles[2]["id"]
+        store.save_provider_settings(profiles, target_id, remember=True)
         raw = path.read_text(encoding="utf-8")
-        for secret in ("gemini-secret", "claude-secret", "openai-secret"):
+        for secret in ("chinese-secret", "grok-secret", "claude-cursor-secret"):
             assert secret not in raw
         loaded, selected = store.load_provider_settings(default_profiles())
-        assert selected == "maxplus-claude"
-        assert [p["api_key"] for p in loaded] == [
-            "gemini-secret", "claude-secret", "openai-secret"
-        ]
+        assert selected == target_id
+        assert loaded[0]["api_key"] == "chinese-secret"
+        assert loaded[1]["api_key"] == "grok-secret"
+        assert loaded[2]["api_key"] == "claude-cursor-secret"
         store.save_provider_settings(loaded, selected, remember=False)
         assert not path.exists()
     print("encrypted settings test passed")

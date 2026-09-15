@@ -96,8 +96,17 @@ class SettingsStore:
                 payload = json.loads(self.path.read_text(encoding="utf-8"))
                 if payload.get("version") == 2 and payload.get("settings_dpapi"):
                     saved = json.loads(_unprotect(payload["settings_dpapi"]))
-                    profiles = normalize_profiles(saved.get("profiles"))
-                    selected_id = str(saved.get("selected_profile_id") or profiles[0]["id"])
+                    saved_profiles = normalize_profiles(saved.get("profiles"))
+                    selected_id = str(saved.get("selected_profile_id") or (saved_profiles[0]["id"] if saved_profiles else ""))
+
+                    # Merge missing default presets so new official pools (Grok, Chinese Specials, etc.) appear automatically
+                    existing_ids = {p.get("id") for p in saved_profiles}
+                    existing_urls = {str(p.get("base_url")).strip().rstrip("/").casefold() for p in saved_profiles}
+                    for default_p in defaults:
+                        d_url = str(default_p.get("base_url")).strip().rstrip("/").casefold()
+                        if default_p.get("id") not in existing_ids and d_url not in existing_urls:
+                            saved_profiles.append(deepcopy(default_p))
+                    profiles = saved_profiles
                 elif payload.get("api_key_dpapi") and profiles:
                     profiles[0]["api_key"] = _unprotect(payload["api_key_dpapi"]).strip()
             except Exception:

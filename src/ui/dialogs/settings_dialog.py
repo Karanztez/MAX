@@ -69,6 +69,9 @@ class SettingsDialog(tk.Toplevel):
         tk.Button(list_actions, text="−", command=self._delete_profile, bg=T["bg_btn"], fg=T["err_hdr"],
                   activebackground=T["bg3"], activeforeground=T["fg"], relief="flat",
                   font=FONT_BOLD, cursor="hand2").pack(side="left", fill="x", expand=True, padx=(6, 0))
+        tk.Button(sidebar, text="↺ คืนค่า Preset เริ่มต้น", command=self._reset_defaults,
+                  bg=T["bg_btn"], fg=T["sub"], activebackground=T["bg3"], activeforeground=T["fg"],
+                  relief="flat", font=FONT_TINY, cursor="hand2", pady=4).pack(fill="x", pady=(6, 0))
 
         editor = tk.Frame(content, bg=T["bg"])
         editor.pack(side="left", fill="both", expand=True)
@@ -222,6 +225,26 @@ class SettingsDialog(tk.Toplevel):
         self._profiles.pop(self._index)
         self._index = min(self._index, len(self._profiles) - 1)
         self._refresh_list()
+
+    def _reset_defaults(self) -> None:
+        """Reset profiles to standard official presets while preserving entered API keys."""
+        from src.core.provider_profiles import default_profiles
+        from copy import deepcopy
+        defaults = default_profiles()
+        existing_keys = {p.get("id"): p.get("api_key", "") for p in self._profiles if p.get("api_key")}
+        existing_keys.update({str(p.get("base_url")).strip().rstrip("/"): p.get("api_key", "") for p in self._profiles if p.get("api_key")})
+
+        new_profiles = deepcopy(defaults)
+        for p in new_profiles:
+            if p.get("id") in existing_keys:
+                p["api_key"] = existing_keys[p["id"]]
+            elif str(p.get("base_url")).strip().rstrip("/") in existing_keys:
+                p["api_key"] = existing_keys[str(p.get("base_url")).strip().rstrip("/")]
+
+        self._profiles = new_profiles
+        self._index = 0
+        self._refresh_list()
+        messagebox.showinfo("คืนค่า Preset สำเร็จ", "โหลดโปรไฟล์เริ่มต้นครบทุก Pool (Chinese Specials, Grok Heavy, Claude Cursor, Claude Antigravity, Gemini, OpenAI) แล้ว", parent=self)
 
     def _toggle_key(self) -> None:
         self._showing = not self._showing

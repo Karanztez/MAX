@@ -49,7 +49,7 @@ class MaxPlusGUI(tk.Tk):
         super().__init__()
         self.project_path = os.path.abspath(os.getcwd())
         self.project_name = os.path.basename(self.project_path)
-        self.title(f"MAX v{APP_VERSION}  ·  📁 {self.project_name}")
+        self.title(f"MAX v{APP_VERSION}")
         self.geometry("1100x800")
         self.configure(bg=T["bg"])
         self.resizable(True, True)
@@ -151,7 +151,7 @@ class MaxPlusGUI(tk.Tk):
         if chosen:
             self.project_path = os.path.abspath(chosen)
             self.project_name = os.path.basename(self.project_path)
-            self.title(f"MaxPlus AI  ·  📁 {self.project_name}")
+            self.title(f"MAX v{APP_VERSION}")
             self._proj_btn.configure(text=f"📁 {self.project_name}")
             tab = self._current_tab()
             if tab is not None:
