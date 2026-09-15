@@ -2,9 +2,12 @@
 tests/test_updater.py — Unit tests for updater logic and skip version persistence.
 """
 
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.core.updater import (
     parse_version_tuple,

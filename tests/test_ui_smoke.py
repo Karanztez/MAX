@@ -2,8 +2,13 @@
 tests/test_ui_smoke.py — Smoke tests for UI widgets, MessageBubble, SettingsDialog, and themes.
 """
 
+import sys
 import unittest
 import tkinter as tk
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from src.ui.main_window import MaxPlusGUI
 from src.ui.widgets.message_bubble import MessageBubble
 from src.ui.dialogs.settings_dialog import SettingsDialog

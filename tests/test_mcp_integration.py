@@ -2,10 +2,13 @@
 test_mcp_integration.py — Integration and unit tests for MCP support and new skills in MaxPlus AI.
 """
 
+import sys
 import unittest
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.core.skill_manager import SkillManager
 from src.core.mcp_manager import MCPManager, MCPTool
@@ -50,7 +53,7 @@ class TestSkillsAndMCP(unittest.TestCase):
         self.assertIn("query", schema["function"]["parameters"]["properties"])
 
     def test_mcp_builtins_execution(self):
-        """Verify built-in tools (calculator, datetime, sysinfo) work accurately."""
+        """Verify built-in tools (calculator, datetime, sysinfo, file ops, shell, python) work accurately."""
         with TemporaryDirectory() as tmpdir:
             cfg_file = Path(tmpdir) / "mcp_servers.json"
             mgr = MCPManager(config_path=cfg_file)
@@ -70,6 +73,44 @@ class TestSkillsAndMCP(unittest.TestCase):
             # Test system info
             sys_res = mgr.execute_tool("get_system_info", {})
             self.assertIn("Python", sys_res)
+
+            # Test write_file & read_file
+            demo_path = str(Path(tmpdir) / "sub" / "hello.py")
+            write_res = mgr.execute_tool("write_file", {"path": demo_path, "content": "print('MAX Agent AI')\n# Second line"})
+            self.assertIn("สำเร็จ", write_res)
+
+            read_res = mgr.execute_tool("read_file", {"path": demo_path})
+            self.assertIn("MAX Agent AI", read_res)
+            self.assertIn("Lines 1-2", read_res)
+
+            # Test search_files
+            search_res = mgr.execute_tool("search_files", {"query": "Agent AI", "path": tmpdir})
+            self.assertIn("hello.py", search_res)
+
+            # Test list_directory
+            list_res = mgr.execute_tool("list_directory", {"path": tmpdir})
+            self.assertIn("hello.py", list_res)
+
+            # Test run_python_code
+            py_res = mgr.execute_tool("run_python_code", {"code": "print('HELLO_FROM_SANDBOX')"})
+            self.assertIn("HELLO_FROM_SANDBOX", py_res)
+
+            # Test run_command
+            cmd_res = mgr.execute_tool("run_command", {"command": f"{sys.executable} -c \"print('CMD_OK')\""})
+            self.assertIn("CMD_OK", cmd_res)
+            self.assertIn("Exit Code: 0", cmd_res)
+
+            # Check tools list
+            all_tools = mgr.get_all_tools()
+            tool_names = {t.name for t in all_tools}
+            expected_names = {
+                "calculate", "get_current_time", "get_system_info",
+                "search_web", "fetch_web_content", "list_directory",
+                "read_file", "write_file", "search_files",
+                "run_command", "run_python_code",
+            }
+            for name in expected_names:
+                self.assertIn(name, tool_names, f"Built-in tool '{name}' must be registered")
 
     def test_mcp_config_persistence(self):
         """Verify adding and removing MCP server configurations."""
