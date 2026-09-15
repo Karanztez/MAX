@@ -25,9 +25,12 @@ class _Response:
 
 def main() -> None:
     profiles = default_profiles()
+    native_p = next(p for p in profiles if p["id"] == "maxplus-claude-native")
     cursor_p = next(p for p in profiles if p["id"] == "maxplus-claude-cursor")
     anti_p = next(p for p in profiles if p["id"] == "maxplus-claude-antigravity")
 
+    assert native_p["base_url"].endswith("/claude-native/v1")
+    assert "claude-fable-5-1" in native_p["models"]
     assert cursor_p["base_url"].endswith("/claude-cursor-full/v1")
     assert "claude-fable-5-1" in cursor_p["models"]
     assert anti_p["base_url"].endswith("/claude-antigravity-full/v1")

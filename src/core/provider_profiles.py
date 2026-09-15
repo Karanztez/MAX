@@ -17,6 +17,18 @@ GEMINI_MODELS = [
     "gemini-2.5-flash-lite",
 ]
 
+CLAUDE_NATIVE_MODELS = [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-6",
+    "claude-sonnet-5",
+    "claude-opus-4-6",
+    "claude-opus-4-7",
+    "claude-opus-4-8",
+    "claude-opus-5",
+    "claude-fable-5",
+    "claude-fable-5-1",
+]
+
 CLAUDE_CURSOR_MODELS = [
     "claude-haiku-4-5-20251001",
     "claude-sonnet-4-6",
@@ -37,7 +49,7 @@ CLAUDE_ANTIGRAVITY_MODELS = [
     "claude-sonnet-4-6",
 ]
 
-CLAUDE_MODELS = CLAUDE_CURSOR_MODELS
+CLAUDE_MODELS = CLAUDE_NATIVE_MODELS
 
 CHINESE_SPECIALS_MODELS = [
     "deepseek-v4.1-flash",
@@ -79,6 +91,15 @@ OPENAI_MODELS = [
 
 def default_profiles() -> list[dict[str, Any]]:
     return [
+        {
+            "id": "maxplus-claude-native",
+            "name": "Claude Native",
+            "base_url": "https://api.maxplus-ai.cc/claude-native/v1",
+            "api_mode": "chat_completions",
+            "api_key": "",
+            "models": list(CLAUDE_NATIVE_MODELS),
+            "model": "claude-sonnet-4-6",
+        },
         {
             "id": "maxplus-chinese-specials",
             "name": "Chinese Specials",
