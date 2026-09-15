@@ -56,6 +56,14 @@ class TestUISmoke(unittest.TestCase):
         self.assertIsNotNone(dlg)
         dlg.destroy()
 
+    def test_health_dialog_creation(self) -> None:
+        from src.core.provider_profiles import default_profiles
+        from src.ui.dialogs.health_dialog import HealthCheckDialog
+        profiles = default_profiles()
+        dlg = HealthCheckDialog(self.root, profiles, profiles[0]["id"])
+        self.assertIsNotNone(dlg)
+        dlg.destroy()
+
 
 if __name__ == "__main__":
     unittest.main()

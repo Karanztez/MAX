@@ -138,6 +138,13 @@ class SettingsDialog(tk.Toplevel):
         )
         self._update_check_btn.pack(side="left", padx=(10, 0))
 
+        self._health_check_btn = tk.Button(
+            footer, text="⚡ เช็คสถานะ API", command=self._open_health_check,
+            bg=T["bg2"], fg=T["accent"], activebackground=T["bg3"], activeforeground=T["accent_hover"],
+            relief="flat", font=FONT_TINY, padx=10, pady=5, cursor="hand2"
+        )
+        self._health_check_btn.pack(side="left", padx=(10, 0))
+
         tk.Button(footer, text="ยกเลิก", command=self.destroy, bg=T["bg_btn"], fg=T["fg"],
                   activebackground=T["bg3"], activeforeground=T["fg"], relief="flat",
                   font=FONT, padx=14, pady=7, cursor="hand2").pack(side="right")
@@ -146,6 +153,12 @@ class SettingsDialog(tk.Toplevel):
         self.bind("<Control-S>", lambda _e: self._save() or "break")
         self.bind("<Control-KeyPress>", self._window_control_shortcut)
         self._refresh_list()
+
+    def _open_health_check(self) -> None:
+        self._commit_editor()
+        from src.ui.dialogs.health_dialog import HealthCheckDialog
+        selected_id = self._profiles[self._index]["id"]
+        HealthCheckDialog(self, self._profiles, selected_id)
 
     def _check_updates_click(self) -> None:
         parent = self.master

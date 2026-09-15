@@ -7,6 +7,7 @@ from src.ui.dialogs.settings_dialog import SettingsDialog
 from src.ui.dialogs.mcp_dialog import MCPManagerDialog
 from src.ui.dialogs.crop_dialog import CropDialog
 from src.ui.dialogs.update_dialog import UpdateDialog
+from src.ui.dialogs.health_dialog import HealthCheckDialog
 
 __all__ = [
     "SkillPickerDialog",
@@ -14,5 +15,6 @@ __all__ = [
     "MCPManagerDialog",
     "CropDialog",
     "UpdateDialog",
+    "HealthCheckDialog",
 ]
 

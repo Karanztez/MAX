@@ -34,6 +34,7 @@ from src.ui.capture.screen_crop import ScreenCropOverlay
 from src.ui.dialogs.settings_dialog import SettingsDialog
 from src.ui.dialogs.mcp_dialog import MCPManagerDialog
 from src.ui.dialogs.update_dialog import UpdateDialog
+from src.ui.dialogs.health_dialog import HealthCheckDialog
 
 
 def _project_name() -> str:
@@ -229,6 +230,14 @@ class MaxPlusGUI(tk.Tk):
         )
         self._mcp_btn.pack(side="right", padx=(4, 0))
 
+        self._health_btn = tk.Button(
+            self._toolbar_right, text="⚡ เช็คสถานะ", bg=T["bg2"], fg=T["accent"],
+            activebackground=T["bg3"], activeforeground=T["accent_hover"],
+            font=FONT_TINY, relief="flat", padx=8, pady=3,
+            command=self._open_health_check, cursor="hand2",
+        )
+        self._health_btn.pack(side="right", padx=(4, 0))
+
         active = self._active_profile()
         self.model_var = tk.StringVar(value=active["model"])
         self._model_box = ttk.Combobox(self._toolbar_right, textvariable=self.model_var,
@@ -325,6 +334,9 @@ class MaxPlusGUI(tk.Tk):
 
     def _open_mcp_manager(self) -> None:
         MCPManagerDialog(self, self.mcp_manager, on_update=self._on_mcp_updated)
+
+    def _open_health_check(self) -> None:
+        HealthCheckDialog(self, self.profiles, self.selected_profile_id)
 
     def _on_mcp_updated(self) -> None:
         count = len(self.mcp_manager.get_all_tools())
@@ -559,6 +571,8 @@ class MaxPlusGUI(tk.Tk):
         self._theme_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
         self._settings_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
         self._mcp_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
+        if hasattr(self, "_health_btn"):
+            self._health_btn.configure(bg=T["bg2"], fg=T["accent"], activebackground=T["bg3"], activeforeground=T["accent_hover"])
 
         # update notebook style
         style = ttk.Style(self)
