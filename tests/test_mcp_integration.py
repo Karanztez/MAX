@@ -100,6 +100,33 @@ class TestSkillsAndMCP(unittest.TestCase):
             self.assertIn("CMD_OK", cmd_res)
             self.assertIn("Exit Code: 0", cmd_res)
 
+            # Test edit_file_snippet
+            edit_res = mgr.execute_tool("edit_file_snippet", {
+                "path": demo_path,
+                "target": "MAX Agent AI",
+                "replacement": "MAX Super Agent AI"
+            })
+            self.assertIn("สำเร็จ", edit_res)
+            updated_content = Path(demo_path).read_text(encoding="utf-8")
+            self.assertIn("MAX Super Agent AI", updated_content)
+
+            # Test get_file_info
+            info_res = mgr.execute_tool("get_file_info", {"path": demo_path})
+            self.assertIn("Lines: 2", info_res)
+
+            # Test json_format
+            json_res = mgr.execute_tool("json_format", {"json_text": '{"max":1,"mode":"turbo"}'})
+            self.assertIn('"turbo"', json_res)
+
+            # Test hash_data
+            hash_res = mgr.execute_tool("hash_data", {"text": "MAX_AGENT"})
+            self.assertTrue(len(hash_res) == 64)
+
+            # Test base64_codec
+            b64_enc = mgr.execute_tool("base64_codec", {"text": "hello_max", "action": "encode"})
+            b64_dec = mgr.execute_tool("base64_codec", {"text": b64_enc, "action": "decode"})
+            self.assertEqual(b64_dec, "hello_max")
+
             # Check tools list
             all_tools = mgr.get_all_tools()
             tool_names = {t.name for t in all_tools}
@@ -108,6 +135,10 @@ class TestSkillsAndMCP(unittest.TestCase):
                 "search_web", "fetch_web_content", "list_directory",
                 "read_file", "write_file", "search_files",
                 "run_command", "run_python_code",
+                "edit_file_snippet", "get_file_info", "delete_file",
+                "http_request", "git_status", "git_diff", "git_log",
+                "list_processes", "get_environment_variable",
+                "json_format", "hash_data", "base64_codec",
             }
             for name in expected_names:
                 self.assertIn(name, tool_names, f"Built-in tool '{name}' must be registered")

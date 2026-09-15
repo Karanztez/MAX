@@ -602,6 +602,181 @@ def _builtin_run_python(code: str, timeout_seconds: int = 15) -> str:
             pass
 
 
+def _builtin_edit_snippet(path: str, target: str, replacement: str) -> str:
+    """Surgically replace a specific code snippet in a file without rewriting the whole file."""
+    p = Path(path).resolve()
+    if not p.exists():
+        return f"Error: File '{path}' does not exist"
+    if not p.is_file():
+        return f"Error: '{path}' is not a file"
+
+    try:
+        content = p.read_text(encoding="utf-8")
+        if target not in content:
+            return f"Error: Target snippet not found in '{p.name}'"
+        count = content.count(target)
+        new_content = content.replace(target, replacement, 1)
+        p.write_text(new_content, encoding="utf-8")
+        return f"สำเร็จ: แก้ไขโค้ดใน '{p.name}' เรียบร้อย (พบ {count} จุด, แทนที่ 1 จุด)"
+    except Exception as ex:
+        return f"Error editing file snippet: {ex}"
+
+
+def _builtin_get_file_info(path: str) -> str:
+    """Get metadata and statistics about a file or directory."""
+    p = Path(path).resolve()
+    if not p.exists():
+        return f"Error: Path '{path}' does not exist"
+
+    import datetime
+    stat = p.stat()
+    mtime = datetime.datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    ctime = datetime.datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
+    is_dir = p.is_dir()
+    size = stat.st_size
+    size_str = f"{size} B" if size < 1024 else f"{size/1024:.2f} KB ({size/1024/1024:.2f} MB)"
+
+    info = [
+        f"Path: {p}",
+        f"Type: {'Directory' if is_dir else 'File'}",
+        f"Size: {size_str}",
+        f"Modified: {mtime}",
+        f"Created: {ctime}",
+    ]
+    if not is_dir:
+        try:
+            lines = p.read_text(encoding="utf-8", errors="ignore").splitlines()
+            info.append(f"Lines: {len(lines)}")
+        except Exception:
+            pass
+    return "\n".join(info)
+
+
+def _builtin_delete_file(path: str) -> str:
+    """Delete a file from the filesystem."""
+    p = Path(path).resolve()
+    if not p.exists():
+        return f"Error: Path '{path}' does not exist"
+    if p.is_dir():
+        return f"Error: '{path}' is a directory, not a file (for safety, directories cannot be deleted with this tool)"
+
+    try:
+        p.unlink()
+        return f"สำเร็จ: ลบไฟล์ '{p}' เรียบร้อย"
+    except Exception as ex:
+        return f"Error deleting file '{path}': {ex}"
+
+
+def _builtin_http_request(url: str, method: str = "GET", headers: Optional[dict[str, str]] = None,
+                          body: Optional[str] = None) -> str:
+    """Send an HTTP request (GET, POST, PUT, DELETE, PATCH) and return response status and body."""
+    import urllib.request
+    import urllib.error
+
+    url = url.strip()
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+
+    method = method.strip().upper()
+    req_headers = {
+        "User-Agent": "MAX-AI-Agent/1.0",
+        "Accept": "*/*",
+    }
+    if headers and isinstance(headers, dict):
+        req_headers.update({str(k): str(v) for k, v in headers.items()})
+
+    data_bytes = body.encode("utf-8") if body else None
+    req = urllib.request.Request(url, data=data_bytes, headers=req_headers, method=method)
+
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            code = resp.status
+            content = resp.read().decode("utf-8", errors="replace")
+            # Truncate if response is excessively large
+            if len(content) > 10000:
+                content = content[:10000] + "\n... [Response truncated at 10,000 characters]"
+            return f"HTTP {code} OK\n\n{content}"
+    except urllib.error.HTTPError as e:
+        err_content = e.read().decode("utf-8", errors="replace")
+        return f"HTTP Error {e.code}: {e.reason}\n\n{err_content}"
+    except Exception as ex:
+        return f"HTTP Request Error: {ex}"
+
+
+def _builtin_git_status(path: str = ".") -> str:
+    """Get current Git status, branch, and uncommitted changes."""
+    return _builtin_run_command("git status --short --branch", cwd=path, timeout_seconds=10)
+
+
+def _builtin_git_diff(path: str = ".", cached: bool = False) -> str:
+    """Get Git diff for unstaged or cached changes."""
+    cmd = "git diff --cached" if cached else "git diff"
+    return _builtin_run_command(cmd, cwd=path, timeout_seconds=10)
+
+
+def _builtin_git_log(path: str = ".", count: int = 5) -> str:
+    """Get recent Git commits in oneline format."""
+    n = max(1, min(int(count or 5), 30))
+    return _builtin_run_command(f"git log -n {n} --oneline", cwd=path, timeout_seconds=10)
+
+
+def _builtin_list_processes(filter_name: str = "") -> str:
+    """List running processes filtered by name."""
+    filter_name = (filter_name or "").strip().lower()
+    if os.name == "nt":
+        cmd = f'tasklist /FI "IMAGENAME eq {filter_name}*"' if filter_name else "tasklist"
+    else:
+        cmd = f"ps aux | grep -i {filter_name}" if filter_name else "ps aux"
+    res = _builtin_run_command(cmd, timeout_seconds=10)
+    lines = res.splitlines()
+    if len(lines) > 60:
+        return "\n".join(lines[:60]) + f"\n... [แสดงผล 60 จาก {len(lines)} กระบวนการ]"
+    return res
+
+
+def _builtin_get_env(name: str) -> str:
+    """Get environment variable value safely."""
+    val = os.environ.get(name.strip())
+    if val is None:
+        return f"Environment variable '{name}' is not set"
+    return val
+
+
+def _builtin_json_format(text: str, indent: int = 2) -> str:
+    """Parse, validate, and pretty-print JSON string."""
+    try:
+        data = json.loads(text.strip())
+        return json.dumps(data, indent=int(indent or 2), ensure_ascii=False)
+    except Exception as ex:
+        return f"Invalid JSON error: {ex}"
+
+
+def _builtin_hash_data(text: str, algorithm: str = "sha256") -> str:
+    """Calculate cryptographic hash (sha256, md5, sha1) for a string."""
+    import hashlib
+    algo = algorithm.strip().lower()
+    raw = text.encode("utf-8")
+    if algo == "md5":
+        return hashlib.md5(raw).hexdigest()
+    elif algo == "sha1":
+        return hashlib.sha1(raw).hexdigest()
+    elif algo == "sha512":
+        return hashlib.sha512(raw).hexdigest()
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _builtin_base64_codec(text: str, action: str = "encode") -> str:
+    """Encode or decode Base64 string."""
+    import base64
+    act = action.strip().lower()
+    try:
+        if act == "decode":
+            return base64.b64decode(text.strip().encode("ascii")).decode("utf-8", errors="replace")
+        return base64.b64encode(text.encode("utf-8")).decode("ascii")
+    except Exception as ex:
+        return f"Base64 error: {ex}"
+
+
 class MCPManager:
     """Central manager for MCP servers, built-in tools, and function calling integration."""
 
@@ -834,6 +1009,225 @@ class MCPManager:
                 server_name="builtin",
             ),
             lambda _args: _builtin_sysinfo(),
+        )
+
+        # 12. Edit File Snippet
+        self.builtin_tools["edit_file_snippet"] = (
+            MCPTool(
+                name="edit_file_snippet",
+                description="แก้ไขโค้ดเฉพาะจุดในไฟล์โดยการค้นหาท่อนโค้ดเป้าหมาย (target) และแทนที่ด้วยโค้ดใหม่ (replacement) อย่างแม่นยำ โดยไม่ต้องเขียนทับไฟล์ใหม่ทั้งไฟล์",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "พาธของไฟล์ที่ต้องการแก้ไข"},
+                        "target": {"type": "string", "description": "โค้ดเดิมที่ต้องการค้นหาและแทนที่ (ต้องตรงทุกตัวอักษร)"},
+                        "replacement": {"type": "string", "description": "โค้ดใหม่ที่จะนำไปแทนที่"},
+                    },
+                    "required": ["path", "target", "replacement"],
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_edit_snippet(
+                str(args.get("path", "")),
+                str(args.get("target", "")),
+                str(args.get("replacement", "")),
+            ),
+        )
+
+        # 13. Get File Info
+        self.builtin_tools["get_file_info"] = (
+            MCPTool(
+                name="get_file_info",
+                description="ตรวจสอบข้อมูลคุณสมบัติของไฟล์ (ขนาด, จำนวนบรรทัด, วันที่สร้าง/แก้ไขล่าสุด, สิทธิ์)",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "พาธของไฟล์หรือโฟลเดอร์ที่ต้องการตรวจสอบ"},
+                    },
+                    "required": ["path"],
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_get_file_info(str(args.get("path", ""))),
+        )
+
+        # 14. Delete File
+        self.builtin_tools["delete_file"] = (
+            MCPTool(
+                name="delete_file",
+                description="ลบไฟล์เดี่ยวที่ไม่ต้องการออกจากระบบอย่างปลอดภัย (ไม่สามารถลบโฟลเดอร์ได้)",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "พาธของไฟล์ที่ต้องการลบ"},
+                    },
+                    "required": ["path"],
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_delete_file(str(args.get("path", ""))),
+        )
+
+        # 15. HTTP Request
+        self.builtin_tools["http_request"] = (
+            MCPTool(
+                name="http_request",
+                description="ส่ง HTTP Request (GET, POST, PUT, DELETE, PATCH) ไปยัง Webhook, REST API หรือ URL ภายนอก",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "URL ปลายทาง"},
+                        "method": {"type": "string", "description": "HTTP Method (GET, POST, PUT, DELETE, PATCH)", "default": "GET"},
+                        "headers": {"type": "object", "description": "HTTP Headers ในรูปแบบ key-value", "default": {}},
+                        "body": {"type": "string", "description": "Request body (string หรือ JSON string)"},
+                    },
+                    "required": ["url"],
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_http_request(
+                str(args.get("url", "")),
+                method=str(args.get("method", "GET")),
+                headers=args.get("headers"),
+                body=str(args.get("body", "")) if args.get("body") is not None else None,
+            ),
+        )
+
+        # 16. Git Status
+        self.builtin_tools["git_status"] = (
+            MCPTool(
+                name="git_status",
+                description="ตรวจสอบสถานะ Git ของโปรเจกต์ (branch ปัจจุบัน, ไฟล์ที่แก้ไข, ไฟล์ใหม่)",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "ไดเรกทอรีของ Git repository (ค่าเริ่มต้น .)", "default": "."},
+                    },
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_git_status(str(args.get("path", "."))),
+        )
+
+        # 17. Git Diff
+        self.builtin_tools["git_diff"] = (
+            MCPTool(
+                name="git_diff",
+                description="ตรวจสอบความเปลี่ยนแปลงของโค้ดใน Git (Git Diff) เทียบกับ commit ล่าสุด",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "ไดเรกทอรีของ Git repository (ค่าเริ่มต้น .)", "default": "."},
+                        "cached": {"type": "boolean", "description": "ดู diff ของ staged changes หรือไม่", "default": False},
+                    },
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_git_diff(str(args.get("path", ".")), cached=bool(args.get("cached", False))),
+        )
+
+        # 18. Git Log
+        self.builtin_tools["git_log"] = (
+            MCPTool(
+                name="git_log",
+                description="ดูประวัติการ Commit ล่าสุดใน Git",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "ไดเรกทอรีของ Git repository (ค่าเริ่มต้น .)", "default": "."},
+                        "count": {"type": "integer", "description": "จำนวน commit ที่ต้องการดู (ค่าเริ่มต้น 5)", "default": 5},
+                    },
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_git_log(str(args.get("path", ".")), count=int(args.get("count", 5))),
+        )
+
+        # 19. List Processes
+        self.builtin_tools["list_processes"] = (
+            MCPTool(
+                name="list_processes",
+                description="ตรวจสอบรายการ Process / โปรแกรมที่กำลังทำงานอยู่บนเครื่อง พร้อมตัวกรองชื่อ",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "filter_name": {"type": "string", "description": "กรองตามชื่อโปรแกรม เช่น python, node, blender, git (ค่าเริ่มต้นแสดงทั้งหมด)"},
+                    },
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_list_processes(str(args.get("filter_name", ""))),
+        )
+
+        # 20. Get Environment Variable
+        self.builtin_tools["get_environment_variable"] = (
+            MCPTool(
+                name="get_environment_variable",
+                description="อ่านค่า Environment Variable ของระบบตามชื่อที่ระบุ",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "ชื่อ Environment Variable เช่น PATH, USERNAME, APPDATA"},
+                    },
+                    "required": ["name"],
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_get_env(str(args.get("name", ""))),
+        )
+
+        # 21. JSON Format
+        self.builtin_tools["json_format"] = (
+            MCPTool(
+                name="json_format",
+                description="ตรวจสอบความถูกต้อง และจัดรูปแบบ Pretty-Print ให้กับข้อความ JSON",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "json_text": {"type": "string", "description": "ข้อความ JSON ที่ต้องการจัดรูปแบบ"},
+                        "indent": {"type": "integer", "description": "จำนวน space ย่อหน้า (ค่าเริ่มต้น 2)", "default": 2},
+                    },
+                    "required": ["json_text"],
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_json_format(str(args.get("json_text", "")), indent=int(args.get("indent", 2))),
+        )
+
+        # 22. Hash Data
+        self.builtin_tools["hash_data"] = (
+            MCPTool(
+                name="hash_data",
+                description="คำนวณค่า Cryptographic Hash (SHA256, MD5, SHA1) สำหรับข้อความ",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "description": "ข้อความที่ต้องการคำนวณ Hash"},
+                        "algorithm": {"type": "string", "description": "อัลกอริทึม (sha256, md5, sha1, sha512)", "default": "sha256"},
+                    },
+                    "required": ["text"],
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_hash_data(str(args.get("text", "")), algorithm=str(args.get("algorithm", "sha256"))),
+        )
+
+        # 23. Base64 Codec
+        self.builtin_tools["base64_codec"] = (
+            MCPTool(
+                name="base64_codec",
+                description="แปลงข้อมูลเป็น Base64 (encode) หรือถอดรหัสจาก Base64 (decode)",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "description": "ข้อความที่ต้องการ encode หรือ decode"},
+                        "action": {"type": "string", "description": "action: encode หรือ decode (ค่าเริ่มต้น encode)", "default": "encode"},
+                    },
+                    "required": ["text"],
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_base64_codec(str(args.get("text", "")), action=str(args.get("action", "encode"))),
         )
 
     def load_config(self) -> None:
