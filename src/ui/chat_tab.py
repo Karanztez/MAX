@@ -182,8 +182,9 @@ class ChatTab(tk.Frame):
     # ── bubbles ────────────────────────────────────────────────────────────
     def _add_bubble(self, role: str, content: str,
                     bg_card: str, hdr_color: str,
-                    img: Optional["Image.Image"] = None) -> MessageBubble:
-        b = MessageBubble(self.scroll.inner, role, content, bg_card, hdr_color, img=img)
+                    img: Optional["Image.Image"] = None,
+                    is_thinking: bool = False) -> MessageBubble:
+        b = MessageBubble(self.scroll.inner, role, content, bg_card, hdr_color, img=img, is_thinking=is_thinking)
         self._bubbles.append(b)
         self.after(60, self.scroll.scroll_bottom)
         return b
@@ -370,21 +371,27 @@ class ChatTab(tk.Frame):
             return
         user_text = msg if msg else "(ส่งภาพ)"
         self._add_bubble("You", user_text, T["bg_user"], T["user_hdr"], img=snap)
-        thinking = self._add_bubble("🤔 AI", "กำลังคิด…", T["bg_ai"], T["ai_hdr"])
-        self.status_var.set("กำลังคิด…")
+        thinking = self._add_bubble("AI", "", T["bg_ai"], T["ai_hdr"], is_thinking=True)
+        self.status_var.set("กำลังคิดและวิเคราะห์...")
         content = self._build_content(msg, b64)
         system = self._effective_system_prompt()
         threading.Thread(target=self._run_chat, args=(content, thinking, system), daemon=True).start()
 
     def _run_chat(self, content: object, thinking: MessageBubble, system: str) -> None:
         self.ai.system_prompt = system
+        start_time = time.monotonic()
         try:
             mcp: Optional[MCPManager] = getattr(self.winfo_toplevel(), "mcp_manager", None)
             tools = mcp.get_openai_tools() if (mcp and mcp.enabled and self.ai.api_mode != "responses") else None
 
             if tools and mcp:
                 def on_status(text: str) -> None:
-                    self.after(0, lambda: thinking.update_content(text))
+                    if "->" in text or "ผลลัพธ์" in text:
+                        self.after(0, lambda: thinking.add_step("ผลลัพธ์เครื่องมือ", text, status="done"))
+                    elif "เรียกใช้เครื่องมือ" in text:
+                        self.after(0, lambda: thinking.add_step(text, "", status="running"))
+                    else:
+                        self.after(0, lambda: thinking.update_thinking_status(text))
                     self.after(0, lambda: self.status_var.set(text))
 
                 self.history, logs = self.ai.chat_with_tools(
@@ -398,13 +405,14 @@ class ChatTab(tk.Frame):
                 reply = self.history[-1]["content"]
                 role_title = "AI"
 
-            self.after(0, lambda: thinking.update_content(reply))
-            self.after(0, lambda: thinking.set_role(role_title))
-            self.after(0, lambda: self.status_var.set("Done"))
+            elapsed = time.monotonic() - start_time
+            self.after(0, lambda: thinking.finish_processing(reply, role_title, elapsed))
+            self.after(0, lambda: self.status_var.set(f"เสร็จสิ้น ({elapsed:.1f}s)"))
         except Exception as ex:
             err = str(ex)
-            self.after(0, lambda: thinking.update_content(err))
-            self.after(0, lambda: thinking.set_role("❌ Error"))
+            elapsed = time.monotonic() - start_time
+            self.after(0, lambda: thinking.add_step("เกิดข้อผิดพลาด", err, status="error"))
+            self.after(0, lambda: thinking.finish_processing(err, "❌ Error", elapsed))
             self.after(0, lambda: self.status_var.set(f"Error: {err}"))
 
     # ── ask single-turn ────────────────────────────────────────────────────
@@ -416,13 +424,14 @@ class ChatTab(tk.Frame):
             return
         user_text = msg if msg else "(ส่งภาพ)"
         self._add_bubble("You (Ask)", user_text, T["bg_user"], T["user_hdr"], img=snap)
-        thinking = self._add_bubble("🤔 AI", "กำลังคิด…", T["bg_ai"], T["ai_hdr"])
-        self.status_var.set("กำลังคิด…")
+        thinking = self._add_bubble("AI", "", T["bg_ai"], T["ai_hdr"], is_thinking=True)
+        self.status_var.set("กำลังคิดและวิเคราะห์...")
         content = self._build_content(msg, b64)
         system = self._effective_system_prompt()
         threading.Thread(target=self._run_ask, args=(content, thinking, system), daemon=True).start()
 
     def _run_ask(self, content: object, thinking: MessageBubble, system: str) -> None:
+        start_time = time.monotonic()
         try:
             client = AIClient(api_key=self.ai.api_key, base_url=self.ai.base_url,
                               model=self.ai.model, api_mode=self.ai.api_mode,
@@ -432,7 +441,12 @@ class ChatTab(tk.Frame):
 
             if tools and mcp:
                 def on_status(text: str) -> None:
-                    self.after(0, lambda: thinking.update_content(text))
+                    if "->" in text or "ผลลัพธ์" in text:
+                        self.after(0, lambda: thinking.add_step("ผลลัพธ์เครื่องมือ", text, status="done"))
+                    elif "เรียกใช้เครื่องมือ" in text:
+                        self.after(0, lambda: thinking.add_step(text, "", status="running"))
+                    else:
+                        self.after(0, lambda: thinking.update_thinking_status(text))
                     self.after(0, lambda: self.status_var.set(text))
 
                 hist, logs = client.chat_with_tools(
@@ -444,14 +458,16 @@ class ChatTab(tk.Frame):
                 ans = client.ask(content)  # type: ignore[arg-type]
                 role_title = "AI"
 
-            self.after(0, lambda: thinking.update_content(ans))
-            self.after(0, lambda: thinking.set_role(role_title))
-            self.after(0, lambda: self.status_var.set("Done"))
+            elapsed = time.monotonic() - start_time
+            self.after(0, lambda: thinking.finish_processing(ans, role_title, elapsed))
+            self.after(0, lambda: self.status_var.set(f"เสร็จสิ้น ({elapsed:.1f}s)"))
         except Exception as ex:
             err = str(ex)
-            self.after(0, lambda: thinking.update_content(err))
-            self.after(0, lambda: thinking.set_role("❌ Error"))
+            elapsed = time.monotonic() - start_time
+            self.after(0, lambda: thinking.add_step("เกิดข้อผิดพลาด", err, status="error"))
+            self.after(0, lambda: thinking.finish_processing(err, "❌ Error", elapsed))
             self.after(0, lambda: self.status_var.set(f"Error: {err}"))
+
 
     # ── theme ──────────────────────────────────────────────────────────────
     def apply_theme(self) -> None:

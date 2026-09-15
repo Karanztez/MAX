@@ -169,13 +169,13 @@ class MaxPlusGUI(tk.Tk):
 
         if self._header_logo_photo is not None:
             self._logo_lbl = tk.Label(self._toolbar_left, image=self._header_logo_photo, bg=T["bg"])
-            self._logo_lbl.pack(side="left", padx=(0, 4))
+            self._logo_lbl.pack(side="left", padx=(0, 10))
+            self._title_lbl = None
         else:
             self._logo_lbl = None
-
-        self._title_lbl = tk.Label(self._toolbar_left, text="MAX" if self._logo_lbl is not None else "🪶 MAX",
-                                   bg=T["bg"], fg=T["fg"], font=FONT_HDR)
-        self._title_lbl.pack(side="left", padx=(0, 6))
+            self._title_lbl = tk.Label(self._toolbar_left, text="🪶 MAX",
+                                       bg=T["bg"], fg=T["fg"], font=FONT_HDR)
+            self._title_lbl.pack(side="left", padx=(0, 8))
 
         self._proj_btn = tk.Button(
             self._toolbar_left, text=f"📁 {self.project_name}",
@@ -551,7 +551,8 @@ class MaxPlusGUI(tk.Tk):
         self._toolbar_right.configure(bg=T["bg"])
         if getattr(self, "_logo_lbl", None) is not None:
             self._logo_lbl.configure(bg=T["bg"])
-        self._title_lbl.configure(bg=T["bg"], fg=T["fg"])
+        if getattr(self, "_title_lbl", None) is not None:
+            self._title_lbl.configure(bg=T["bg"], fg=T["fg"])
         self._proj_btn.configure(bg=T["bg2"], fg=T["accent"], activebackground=T["bg3"])
         self._add_tab_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
         self._close_tab_btn.configure(bg=T["bg2"], fg=T["err_hdr"], activebackground=T["bg3"])

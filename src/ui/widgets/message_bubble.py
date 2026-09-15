@@ -1,12 +1,13 @@
 """
-message_bubble.py — Gemini blog-style message bubble card widget for chat display.
+src/ui/widgets/message_bubble.py — Antigravity-style agentic message bubble widget with collapsible thinking & tool execution process.
 """
 
 import os
 import re
+import time
 import tkinter as tk
-from tkinter import filedialog
-from typing import Optional, TYPE_CHECKING
+from tkinter import filedialog, ttk
+from typing import Optional, TYPE_CHECKING, Any
 
 try:
     from PIL import Image, ImageTk  # type: ignore[import-untyped]
@@ -36,7 +37,7 @@ def _format_badge_text(role: str) -> str:
     if role.startswith("You"):
         return "👤 คุณ"
     if "🛠" in role:
-        return "🪶 MAX  [Tools]"
+        return "🪶 MAX  [Agent Tools]"
     if role.startswith("AI"):
         return "🪶 MAX"
     return role
@@ -45,7 +46,8 @@ def _format_badge_text(role: str) -> str:
 class MessageBubble(tk.Frame):
     def __init__(self, parent: tk.Widget, role: str, content: str,
                  bg_card: str, hdr_color: str,
-                 img: Optional["Image.Image"] = None) -> None:
+                 img: Optional["Image.Image"] = None,
+                 is_thinking: bool = False) -> None:
         super().__init__(
             parent,
             bg=bg_card,
@@ -61,6 +63,10 @@ class MessageBubble(tk.Frame):
         self._role_kind = "error" if "Error" in role else ("user" if role.startswith("You") else "ai")
         self._save_btns: list[tk.Button] = []
         self._thumb_ref = None
+        self._steps: list[dict[str, Any]] = []
+        self._is_thinking = is_thinking
+        self._start_time = time.monotonic() if is_thinking else 0.0
+        self._process_expanded = False
         self.pack(fill="x", padx=16, pady=(0, 10))
 
         # Header bar
@@ -78,7 +84,7 @@ class MessageBubble(tk.Frame):
         )
         self._role_lbl.pack(side="left")
 
-        # Copy button (Gemini sleek flat style)
+        # Copy button (Sleek flat style)
         self._copy_btn = tk.Button(
             self._hdr_frame,
             text="📋 คัดลอก",
@@ -112,7 +118,33 @@ class MessageBubble(tk.Frame):
             except Exception:
                 pass
 
-        # Body Text (Blog-style typography with line spacing)
+        # ── Antigravity Process / Thinking Accordion ─────────────────────────
+        self._process_container = tk.Frame(self, bg=bg_card)
+        self._process_container.pack(fill="x", pady=(0, 6))
+
+        self._process_header_btn = tk.Button(
+            self._process_container,
+            text="⚡ กำลังคิดและประมวลผล...",
+            font=FONT_TINY,
+            bg=T["bg2"],
+            fg=T["sub"],
+            activebackground=T["bg3"],
+            activeforeground=T["fg"],
+            relief="flat",
+            anchor="w",
+            padx=10,
+            pady=4,
+            cursor="hand2",
+            command=self._toggle_process,
+        )
+        if is_thinking:
+            self._process_header_btn.pack(fill="x", pady=(0, 4))
+
+        self._steps_frame = tk.Frame(self._process_container, bg=T["bg2"], padx=10, pady=8,
+                                     highlightthickness=1, highlightbackground=T["border"])
+        # Initially collapsed if finished, expanded if active thinking
+
+        # ── Body Text (Blog-style typography) ────────────────────────────────
         self.body = tk.Text(
             self,
             bg=bg_card,
@@ -271,6 +303,91 @@ class MessageBubble(tk.Frame):
             btn.pack(side="right", padx=(0, 6))
             self._save_btns.append(btn)
 
+    # ── Antigravity Process / Thinking Methods ───────────────────────────────
+    def _toggle_process(self) -> None:
+        """Toggle showing/hiding the step-by-step reasoning & tool execution list."""
+        self._process_expanded = not self._process_expanded
+        if self._process_expanded:
+            self._steps_frame.pack(fill="x", pady=(0, 6), after=self._process_header_btn)
+            self._update_process_button_label(expanded=True)
+        else:
+            self._steps_frame.pack_forget()
+            self._update_process_button_label(expanded=False)
+
+    def _update_process_button_label(self, expanded: bool) -> None:
+        arrow = "▾" if expanded else "▸"
+        count = len(self._steps)
+        elapsed = getattr(self, "_elapsed_sec", 0.0)
+        if elapsed > 0:
+            time_str = f"{elapsed:.1f}s"
+        else:
+            time_str = f"{time.monotonic() - self._start_time:.1f}s" if self._start_time else ""
+
+        if self._is_thinking:
+            txt = f"⚡ กำลังคิดและประมวลผล... ({time_str})" if time_str else "⚡ กำลังคิดและประมวลผล..."
+            if count > 0:
+                txt += f"  [{count} ขั้นตอน]"
+        else:
+            txt = f"{arrow} Worked for {time_str} ({count} steps)" if count > 0 else f"{arrow} Worked for {time_str}"
+
+        self._process_header_btn.configure(text=txt)
+
+    def add_step(self, title: str, detail: str = "", status: str = "done") -> None:
+        """Add an Antigravity-style process step card."""
+        self._steps.append({"title": title, "detail": detail, "status": status, "time": time.time()})
+        self._process_header_btn.pack(fill="x", pady=(0, 4))
+        self._render_step_item(title, detail, status)
+        self._update_process_button_label(expanded=self._process_expanded)
+
+    def _render_step_item(self, title: str, detail: str, status: str) -> None:
+        """Render a step item inside _steps_frame."""
+        item = tk.Frame(self._steps_frame, bg=T["bg2"], pady=2)
+        item.pack(fill="x", pady=(0, 4))
+
+        icon = "✔" if status == "done" else ("❌" if status == "error" else "⚙")
+        color = T["accent"] if status == "done" else (T["err_hdr"] if status == "error" else T["sub"])
+
+        title_row = tk.Frame(item, bg=T["bg2"])
+        title_row.pack(fill="x")
+
+        tk.Label(title_row, text=f"{icon} {title}", font=FONT_BOLD, bg=T["bg2"], fg=color, anchor="w").pack(side="left")
+
+        if detail:
+            code_box = tk.Text(
+                item,
+                bg=T["code_bg"],
+                fg=T["code_fg"],
+                font=FONT_MONO,
+                wrap="none",
+                height=min(6, max(2, len(detail.split("\n")))),
+                relief="flat",
+                bd=0,
+                padx=8,
+                pady=4,
+            )
+            code_box.insert("1.0", detail[:800] + ("..." if len(detail) > 800 else ""))
+            code_box.configure(state="disabled")
+            code_box.pack(fill="x", pady=(3, 0))
+
+    def update_thinking_status(self, text: str) -> None:
+        """Update live status text while thinking."""
+        self._process_header_btn.pack(fill="x", pady=(0, 4))
+        self._process_header_btn.configure(text=f"⚡ {text}")
+
+    def finish_processing(self, final_text: str, role: str = "AI", elapsed_sec: float = 0.0) -> None:
+        """Called when AI generation and tool calling loops finish."""
+        self._is_thinking = False
+        self._elapsed_sec = elapsed_sec
+        self.set_role(role)
+        self.update_content(final_text)
+
+        if self._steps or elapsed_sec > 0:
+            self._process_header_btn.pack(fill="x", pady=(0, 6))
+            self._update_process_button_label(expanded=False)
+            self._steps_frame.pack_forget()
+        else:
+            self._process_header_btn.pack_forget()
+
     def update_content(self, text: str) -> None:
         self._content = text
         self.body.configure(state="normal")
@@ -298,6 +415,9 @@ class MessageBubble(tk.Frame):
             activebackground=T["bg3"],
             activeforeground=T["fg"],
         )
+        self._process_container.configure(bg=self._bg_card)
+        self._process_header_btn.configure(bg=T["bg2"], fg=T["sub"], activebackground=T["bg3"], activeforeground=T["fg"])
+        self._steps_frame.configure(bg=T["bg2"], highlightbackground=T["border"])
         self.body.configure(bg=self._bg_card, fg=T["fg"])
         self._configure_tags()
         self._apply_markdown_tags(self._content)
