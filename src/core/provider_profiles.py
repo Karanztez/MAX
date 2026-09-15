@@ -17,17 +17,27 @@ GEMINI_MODELS = [
     "gemini-2.5-flash-lite",
 ]
 
-CLAUDE_MODELS = [
-    "claude-sonnet-4-6",
-    "claude-opus-4-6",
-    "claude-opus-4-6-thinking",
+CLAUDE_CURSOR_MODELS = [
     "claude-haiku-4-5-20251001",
-    "claude-opus-4-5-20251101",
+    "claude-sonnet-4-6",
     "claude-sonnet-5",
+    "claude-opus-4-6",
     "claude-opus-4-7",
     "claude-opus-4-8",
     "claude-opus-5",
+    "claude-fable-5",
+    "claude-fable-5-1",
 ]
+
+CLAUDE_ANTIGRAVITY_MODELS = [
+    "claude-haiku-4-5-20251001",
+    "claude-opus-4-5-20251101",
+    "claude-opus-4-6",
+    "claude-opus-4-6-thinking",
+    "claude-sonnet-4-6",
+]
+
+CLAUDE_MODELS = CLAUDE_CURSOR_MODELS
 
 CHINESE_SPECIALS_MODELS = [
     "deepseek-v4.1-flash",
@@ -88,12 +98,21 @@ def default_profiles() -> list[dict[str, Any]]:
             "model": GROK_MODELS[0],
         },
         {
-            "id": "maxplus-claude",
+            "id": "maxplus-claude-cursor",
             "name": "Claude Cursor Full",
             "base_url": "https://api.maxplus-ai.cc/claude-cursor-full/v1",
             "api_mode": "chat_completions",
             "api_key": "",
-            "models": list(CLAUDE_MODELS),
+            "models": list(CLAUDE_CURSOR_MODELS),
+            "model": "claude-sonnet-4-6",
+        },
+        {
+            "id": "maxplus-claude-antigravity",
+            "name": "Claude Antigravity Full",
+            "base_url": "https://api.maxplus-ai.cc/claude-antigravity-full/v1",
+            "api_mode": "chat_completions",
+            "api_key": "",
+            "models": list(CLAUDE_ANTIGRAVITY_MODELS),
             "model": "claude-sonnet-4-6",
         },
         {

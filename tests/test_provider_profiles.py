@@ -25,8 +25,14 @@ class _Response:
 
 def main() -> None:
     profiles = default_profiles()
-    assert profiles[1]["base_url"].endswith("/claude-cursor-full/v1")
-    assert profiles[1]["models"] == CLAUDE_MODELS
+    cursor_p = next(p for p in profiles if p["id"] == "maxplus-claude-cursor")
+    anti_p = next(p for p in profiles if p["id"] == "maxplus-claude-antigravity")
+
+    assert cursor_p["base_url"].endswith("/claude-cursor-full/v1")
+    assert "claude-fable-5-1" in cursor_p["models"]
+    assert anti_p["base_url"].endswith("/claude-antigravity-full/v1")
+    assert "claude-opus-4-6-thinking" in anti_p["models"]
+
     duplicate = normalize_profiles([profiles[0], {**profiles[0], "id": "copy"}])
     assert duplicate[0]["name"] != duplicate[1]["name"]
 
@@ -54,7 +60,7 @@ def main() -> None:
         captured["payload"] = json.loads(request.data.decode("utf-8"))
         return _Response({"choices": [{"message": {"content": "claude-ok"}}]})
 
-    claude = AIClient(api_key="secret", base_url=profiles[1]["base_url"],
+    claude = AIClient(api_key="secret", base_url=cursor_p["base_url"],
                       model="claude-sonnet-4-6", api_mode="chat_completions")
     with patch("urllib.request.urlopen", fake_chat_urlopen):
         assert claude.ask("hello") == "claude-ok"
