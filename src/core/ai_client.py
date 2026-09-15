@@ -84,7 +84,6 @@ class AIClient:
             }
             if tools:
                 payload["tools"] = tools
-                payload["tool_choice"] = "auto"
         body = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
             url,
@@ -111,6 +110,9 @@ class AIClient:
                 wait = 2 ** _retry          # 1s, 2s, 4s
                 time.sleep(wait)
                 return self._call_response(messages, temperature, max_tokens, tools, _retry + 1)
+            # If endpoint rejects tools (HTTP 400 invalid_request), retry seamlessly without tools
+            if e.code == 400 and tools and ("tools" in err_body or "invalid_request" in err_body):
+                return self._call_response(messages, temperature, max_tokens, tools=None, _retry=_retry)
             raise RuntimeError(f"HTTP {e.code}: {err_body}") from e
         except urllib.error.URLError as e:
             raise RuntimeError(f"Connection error: {e.reason}") from e
