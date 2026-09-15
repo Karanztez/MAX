@@ -30,16 +30,48 @@ from src.ui.themes import (
 )
 
 
-def _format_badge_text(role: str) -> str:
-    """Format role into MAX badges with feather icon."""
+_FEATHER_ICON_PHOTO = None
+
+
+def _get_feather_icon() -> Optional[Any]:
+    global _FEATHER_ICON_PHOTO
+    if _FEATHER_ICON_PHOTO is not None:
+        return _FEATHER_ICON_PHOTO
+    if not _PIL_OK:
+        return None
+    try:
+        import sys
+        base = getattr(sys, "_MEIPASS", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
+        candidates = [
+            os.path.join(base, "src", "assets", "max_icon.png"),
+            os.path.join(base, "src", "assets", "icon.png"),
+            os.path.join(base, "src", "assets", "feather.png"),
+            os.path.join(base, "icon.png"),
+        ]
+        for path in candidates:
+            if os.path.exists(path):
+                img = Image.open(path).convert("RGBA")
+                aspect = img.width / max(1, img.height)
+                h = 18
+                w = max(12, int(h * aspect))
+                resized = img.resize((w, h), Image.Resampling.LANCZOS)
+                _FEATHER_ICON_PHOTO = ImageTk.PhotoImage(resized)
+                return _FEATHER_ICON_PHOTO
+    except Exception:
+        pass
+    return None
+
+
+def _format_badge_text(role: str, has_icon: bool = False) -> str:
+    """Format role into MAX badges with icon or emoji."""
     if "Error" in role:
         return f"⚠️ {role}"
     if role.startswith("You"):
         return "👤 คุณ"
     if "🛠" in role:
-        return "🪶 MAX  [Agent Tools]"
+        return "MAX  [Agent Tools]" if has_icon else "🪶 MAX  [Agent Tools]"
     if role.startswith("AI"):
-        return "🪶 MAX"
+        return "MAX" if has_icon else "🪶 MAX"
     return role
 
 
@@ -73,8 +105,14 @@ class MessageBubble(tk.Frame):
         self._hdr_frame = tk.Frame(self, bg=bg_card)
         self._hdr_frame.pack(fill="x", pady=(0, 6))
 
-        # Role badge
-        badge_text = _format_badge_text(role)
+        # Role icon & badge
+        icon_photo = _get_feather_icon() if (role.startswith("AI") or "🛠" in role) else None
+        self._role_icon_lbl = tk.Label(self._hdr_frame, bg=bg_card)
+        if icon_photo:
+            self._role_icon_lbl.configure(image=icon_photo)
+            self._role_icon_lbl.pack(side="left", padx=(0, 4))
+
+        badge_text = _format_badge_text(role, has_icon=icon_photo is not None)
         self._role_lbl = tk.Label(
             self._hdr_frame,
             text=badge_text,
@@ -400,14 +438,27 @@ class MessageBubble(tk.Frame):
 
     def set_role(self, role: str) -> None:
         self._role_raw = role
-        self._role_lbl.configure(text=_format_badge_text(role))
         self._role_kind = "error" if "Error" in role else ("user" if role.startswith("You") else "ai")
+        icon_photo = _get_feather_icon() if self._role_kind == "ai" else None
+        if icon_photo:
+            self._role_icon_lbl.configure(image=icon_photo, bg=self._bg_card)
+            self._role_icon_lbl.pack(side="left", padx=(0, 4), before=self._role_lbl)
+        else:
+            self._role_icon_lbl.pack_forget()
+
+        self._role_lbl.configure(
+            text=_format_badge_text(role, has_icon=icon_photo is not None),
+            bg=self._bg_card,
+            fg=self._hdr_color,
+        )
 
     def apply_theme(self) -> None:
         self._bg_card = T[{"user": "bg_user", "ai": "bg_ai", "error": "bg_err"}[self._role_kind]]
         self._hdr_color = T[{"user": "user_hdr", "ai": "ai_hdr", "error": "err_hdr"}[self._role_kind]]
         self.configure(bg=self._bg_card, highlightbackground=T["border"])
         self._hdr_frame.configure(bg=self._bg_card)
+        if hasattr(self, "_role_icon_lbl"):
+            self._role_icon_lbl.configure(bg=self._bg_card)
         self._role_lbl.configure(bg=self._bg_card, fg=self._hdr_color)
         self._copy_btn.configure(
             bg=T["bg_btn"],
