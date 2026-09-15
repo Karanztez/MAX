@@ -158,16 +158,15 @@ class MessageBubble(tk.Frame):
 
         # ── Antigravity Process / Thinking Accordion ─────────────────────────
         self._process_container = tk.Frame(self, bg=bg_card)
-        self._process_container.pack(fill="x", pady=(0, 6))
 
         self._process_header_btn = tk.Button(
             self._process_container,
             text="⚡ กำลังคิดและประมวลผล...",
             font=FONT_TINY,
-            bg=T["bg2"],
-            fg=T["sub"],
-            activebackground=T["bg3"],
-            activeforeground=T["fg"],
+            bg=T.get("bg2", "#282a2c"),
+            fg=T.get("sub", "#9aa0a6"),
+            activebackground=T.get("bg3", "#333538"),
+            activeforeground=T.get("fg", "#ffffff"),
             relief="flat",
             anchor="w",
             padx=10,
@@ -176,10 +175,11 @@ class MessageBubble(tk.Frame):
             command=self._toggle_process,
         )
         if is_thinking:
+            self._process_container.pack(fill="x", pady=(0, 6))
             self._process_header_btn.pack(fill="x", pady=(0, 4))
 
-        self._steps_frame = tk.Frame(self._process_container, bg=T["bg2"], padx=10, pady=8,
-                                     highlightthickness=1, highlightbackground=T["border"])
+        self._steps_frame = tk.Frame(self._process_container, bg=T.get("bg2", "#282a2c"), padx=10, pady=8,
+                                     highlightthickness=1, highlightbackground=T.get("border", "#3c4043"))
         # Initially collapsed if finished, expanded if active thinking
 
         # ── Body Text (Blog-style typography) ────────────────────────────────
@@ -373,28 +373,29 @@ class MessageBubble(tk.Frame):
     def add_step(self, title: str, detail: str = "", status: str = "done") -> None:
         """Add an Antigravity-style process step card."""
         self._steps.append({"title": title, "detail": detail, "status": status, "time": time.time()})
+        self._process_container.pack(fill="x", pady=(0, 6), before=self.body)
         self._process_header_btn.pack(fill="x", pady=(0, 4))
         self._render_step_item(title, detail, status)
         self._update_process_button_label(expanded=self._process_expanded)
 
     def _render_step_item(self, title: str, detail: str, status: str) -> None:
         """Render a step item inside _steps_frame."""
-        item = tk.Frame(self._steps_frame, bg=T["bg2"], pady=2)
+        item = tk.Frame(self._steps_frame, bg=T.get("bg2", "#282a2c"), pady=2)
         item.pack(fill="x", pady=(0, 4))
 
         icon = "✔" if status == "done" else ("❌" if status == "error" else "⚙")
-        color = T["accent"] if status == "done" else (T["err_hdr"] if status == "error" else T["sub"])
+        color = T.get("accent", "#8ab4f8") if status == "done" else (T.get("err_hdr", "#f28b82") if status == "error" else T.get("sub", "#9aa0a6"))
 
-        title_row = tk.Frame(item, bg=T["bg2"])
+        title_row = tk.Frame(item, bg=T.get("bg2", "#282a2c"))
         title_row.pack(fill="x")
 
-        tk.Label(title_row, text=f"{icon} {title}", font=FONT_BOLD, bg=T["bg2"], fg=color, anchor="w").pack(side="left")
+        tk.Label(title_row, text=f"{icon} {title}", font=FONT_BOLD, bg=T.get("bg2", "#282a2c"), fg=color, anchor="w").pack(side="left")
 
         if detail:
             code_box = tk.Text(
                 item,
-                bg=T["code_bg"],
-                fg=T["code_fg"],
+                bg=T.get("code_bg", "#161718"),
+                fg=T.get("code_fg", "#d1d7e0"),
                 font=FONT_MONO,
                 wrap="none",
                 height=min(6, max(2, len(detail.split("\n")))),
@@ -409,6 +410,7 @@ class MessageBubble(tk.Frame):
 
     def update_thinking_status(self, text: str) -> None:
         """Update live status text while thinking."""
+        self._process_container.pack(fill="x", pady=(0, 6), before=self.body)
         self._process_header_btn.pack(fill="x", pady=(0, 4))
         self._process_header_btn.configure(text=f"⚡ {text}")
 
@@ -420,10 +422,12 @@ class MessageBubble(tk.Frame):
         self.update_content(final_text)
 
         if self._steps or elapsed_sec > 0:
-            self._process_header_btn.pack(fill="x", pady=(0, 6))
+            self._process_container.pack(fill="x", pady=(0, 6), before=self.body)
+            self._process_header_btn.pack(fill="x", pady=(0, 4))
             self._update_process_button_label(expanded=False)
             self._steps_frame.pack_forget()
         else:
+            self._process_container.pack_forget()
             self._process_header_btn.pack_forget()
 
     def update_content(self, text: str) -> None:
