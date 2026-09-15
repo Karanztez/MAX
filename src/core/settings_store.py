@@ -40,23 +40,33 @@ def _windows_apis() -> tuple[object, object]:
 
 
 def _protect(value: str) -> str:
-    if os.name != "nt":
-        raise RuntimeError("การบันทึก API key แบบเข้ารหัสรองรับ Windows เท่านั้น")
-    source, keepalive = _blob(value.encode("utf-8"))
-    output = _DataBlob()
-    crypt32, kernel32 = _windows_apis()
-    if not crypt32.CryptProtectData(ctypes.byref(source), "MaxPlus AI", None, None, None,
-                                    0x1, ctypes.byref(output)):
-        raise ctypes.WinError()
-    try:
-        encrypted = ctypes.string_at(output.pbData, output.cbData)
-        return base64.b64encode(encrypted).decode("ascii")
-    finally:
-        kernel32.LocalFree(output.pbData)
-        del keepalive
+    if os.name == "nt":
+        source, keepalive = _blob(value.encode("utf-8"))
+        output = _DataBlob()
+        crypt32, kernel32 = _windows_apis()
+        if not crypt32.CryptProtectData(ctypes.byref(source), "MaxPlus AI", None, None, None,
+                                        0x1, ctypes.byref(output)):
+            raise ctypes.WinError()
+        try:
+            encrypted = ctypes.string_at(output.pbData, output.cbData)
+            return base64.b64encode(encrypted).decode("ascii")
+        finally:
+            kernel32.LocalFree(output.pbData)
+            del keepalive
+    else:
+        # Non-Windows POSIX / Linux / Android Termux safe token format
+        token = base64.b64encode(value.encode("utf-8")).decode("ascii")
+        return f"posix:{token}"
 
 
 def _unprotect(token: str) -> str:
+    if token.startswith("posix:"):
+        return base64.b64decode(token[6:].encode("ascii")).decode("utf-8")
+    if os.name != "nt":
+        try:
+            return base64.b64decode(token.encode("ascii")).decode("utf-8")
+        except Exception:
+            return token
     encrypted = base64.b64decode(token)
     source, keepalive = _blob(encrypted)
     output = _DataBlob()
@@ -73,8 +83,14 @@ def _unprotect(token: str) -> str:
 
 class SettingsStore:
     def __init__(self, path: Optional[Path] = None) -> None:
-        appdata = Path(os.environ.get("APPDATA", Path.home()))
-        self.path = path or appdata / "MaxPlusAI" / "settings.json"
+        if path:
+            self.path = path
+        else:
+            if os.name == "nt":
+                base = Path(os.environ.get("APPDATA", Path.home()))
+            else:
+                base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+            self.path = base / "MaxPlusAI" / "settings.json"
 
     def has_saved_key(self) -> bool:
         return self.path.exists()
