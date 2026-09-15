@@ -126,6 +126,15 @@ class SettingsDialog(tk.Toplevel):
         self._save_status_var = tk.StringVar(value="")
         tk.Label(footer, textvariable=self._save_status_var, bg=T["bg"], fg=T["ai_hdr"],
                  font=FONT_TINY).pack(side="left")
+
+        from src.core.updater import APP_VERSION
+        self._update_check_btn = tk.Button(
+            footer, text=f"🔄 ตรวจหาอัปเดต (v{APP_VERSION})", command=self._check_updates_click,
+            bg=T["bg2"], fg=T["sub"], activebackground=T["bg3"], activeforeground=T["fg"],
+            relief="flat", font=FONT_TINY, padx=10, pady=5, cursor="hand2"
+        )
+        self._update_check_btn.pack(side="left", padx=(10, 0))
+
         tk.Button(footer, text="ยกเลิก", command=self.destroy, bg=T["bg_btn"], fg=T["fg"],
                   activebackground=T["bg3"], activeforeground=T["fg"], relief="flat",
                   font=FONT, padx=14, pady=7, cursor="hand2").pack(side="right")
@@ -134,6 +143,20 @@ class SettingsDialog(tk.Toplevel):
         self.bind("<Control-S>", lambda _e: self._save() or "break")
         self.bind("<Control-KeyPress>", self._window_control_shortcut)
         self._refresh_list()
+
+    def _check_updates_click(self) -> None:
+        parent = self.master
+        if hasattr(parent, "check_updates_manual"):
+            parent.check_updates_manual()
+        else:
+            from src.core.updater import check_github_release, is_newer_version, APP_VERSION
+            from src.ui.dialogs.update_dialog import UpdateDialog
+            info = check_github_release()
+            if info and is_newer_version(info.tag_name, APP_VERSION):
+                UpdateDialog(self, info)
+            else:
+                messagebox.showinfo("อัปเดต MAX", f"คุณกำลังใช้งาน MAX เวอร์ชันล่าสุด (v{APP_VERSION}) แล้ว", parent=self)
+
 
     def _field(self, parent: tk.Misc, label: str, variable: tk.StringVar) -> None:
         tk.Label(parent, text=label, bg=T["bg"], fg=T["fg_dim"], font=FONT_TINY).pack(anchor="w", pady=(0, 5))

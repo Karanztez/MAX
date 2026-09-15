@@ -27,11 +27,13 @@ except ImportError:
 from src.core.provider_profiles import default_profiles, normalize_profiles
 from src.core.settings_store import SettingsStore
 from src.core.mcp_manager import MCPManager
+from src.core.updater import check_github_release, is_newer_version, APP_VERSION, UpdateInfo
 from src.ui.themes import T, DARK, LIGHT, FONT, FONT_TINY, FONT_TITLE, FONT_HDR
 from src.ui.chat_tab import ChatTab
 from src.ui.capture.screen_crop import ScreenCropOverlay
 from src.ui.dialogs.settings_dialog import SettingsDialog
 from src.ui.dialogs.mcp_dialog import MCPManagerDialog
+from src.ui.dialogs.update_dialog import UpdateDialog
 
 
 def _project_name() -> str:
@@ -47,7 +49,7 @@ class MaxPlusGUI(tk.Tk):
         super().__init__()
         self.project_path = os.path.abspath(os.getcwd())
         self.project_name = os.path.basename(self.project_path)
-        self.title(f"MaxPlus AI  ·  📁 {self.project_name}")
+        self.title(f"MAX v{APP_VERSION}  ·  📁 {self.project_name}")
         self.geometry("1100x800")
         self.configure(bg=T["bg"])
         self.resizable(True, True)
@@ -79,6 +81,7 @@ class MaxPlusGUI(tk.Tk):
         self._setup_tray()
         self.after(40, self._poll_global_shortcut)
         self.after(100, self._poll_tray_queue)
+        threading.Thread(target=self._check_update_background, daemon=True).start()
 
     def _get_asset_path(self, rel_path: str) -> str:
         import sys
@@ -531,6 +534,57 @@ class MaxPlusGUI(tk.Tk):
 
         for tab in self._tabs:
             tab.apply_theme()
+
+    def _check_update_background(self) -> None:
+        """Check for updates in background on startup and show popup if new."""
+        time.sleep(1.5)
+        try:
+            info = check_github_release()
+            if info and is_newer_version(info.tag_name, APP_VERSION):
+                skipped = self.settings_store.load_skipped_version()
+                if info.tag_name != skipped and info.version != skipped:
+                    self.after(500, lambda: self._show_update_dialog(info))
+        except Exception:
+            pass
+
+    def _show_update_dialog(self, info: UpdateInfo) -> None:
+        """Display the update dialog."""
+        try:
+            UpdateDialog(self, info, self.settings_store)
+        except Exception:
+            pass
+
+    def check_updates_manual(self) -> None:
+        """Check for updates manually (ignoring skip list)."""
+        tab = self._current_tab()
+        if tab is not None:
+            tab.status_var.set("กำลังตรวจสอบเวอร์ชันล่าสุดจาก GitHub...")
+        try:
+            info = check_github_release()
+            if info and is_newer_version(info.tag_name, APP_VERSION):
+                if tab is not None:
+                    tab.status_var.set(f"พบเวอร์ชันใหม่: {info.tag_name}")
+                self._show_update_dialog(info)
+            elif info:
+                if tab is not None:
+                    tab.status_var.set(f"คุณใช้งานเวอร์ชันล่าสุดแล้ว (v{APP_VERSION})")
+                messagebox.showinfo(
+                    "อัปเดต MAX",
+                    f"คุณกำลังใช้งาน MAX เวอร์ชันล่าสุด (v{APP_VERSION}) แล้ว",
+                    parent=self
+                )
+            else:
+                if tab is not None:
+                    tab.status_var.set("ไม่สามารถดึงข้อมูลเวอร์ชันจาก GitHub ได้")
+                messagebox.showwarning(
+                    "ตรวจสอบอัปเดต",
+                    "ไม่สามารถเชื่อมต่อ GitHub Releases ได้ในขณะนี้\nกรุณาลองใหม่อีกครั้ง",
+                    parent=self
+                )
+        except Exception as ex:
+            if tab is not None:
+                tab.status_var.set(f"ตรวจสอบอัปเดตล้มเหลว: {ex}")
+            messagebox.showerror("ตรวจหาอัปเดตล้มเหลว", f"เกิดข้อผิดพลาด:\n{ex}", parent=self)
 
     def _apply_notebook_style(self, style: ttk.Style) -> None:
         try:

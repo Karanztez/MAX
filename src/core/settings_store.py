@@ -151,3 +151,26 @@ class SettingsStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"version": 1, "api_key_dpapi": _protect(api_key)}
         self.path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def load_skipped_version(self) -> str:
+        """Load the version string that the user chose to skip."""
+        if not self.path.exists():
+            return ""
+        try:
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+            return str(payload.get("skipped_version", "")).strip()
+        except Exception:
+            return ""
+
+    def save_skipped_version(self, version: str) -> None:
+        """Save skipped version string to settings file without altering DPAPI credentials."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        payload: dict[str, Any] = {}
+        if self.path.exists():
+            try:
+                payload = json.loads(self.path.read_text(encoding="utf-8"))
+            except Exception:
+                payload = {}
+        payload["skipped_version"] = version.strip()
+        self.path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
