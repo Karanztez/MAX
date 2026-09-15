@@ -80,6 +80,14 @@ GROK_MODELS = [
     "grok-4.5",
 ]
 
+GPT_PRO_SUPREME_MODELS = [
+    "gpt-5.5",
+    "gpt-5.6-luna",
+    "gpt-5.6-terra",
+    "gpt-5.6-sol",
+    "gpt-6-astra",
+]
+
 OPENAI_MODELS = [
     "gpt-6-astra",
     "gpt-5.6-sol",
@@ -144,6 +152,15 @@ def default_profiles() -> list[dict[str, Any]]:
             "api_key": "",
             "models": list(GEMINI_MODELS),
             "model": GEMINI_MODELS[0],
+        },
+        {
+            "id": "maxplus-gpt-pro-supreme",
+            "name": "GPT PRO Supreme",
+            "base_url": "https://api.maxplus-ai.cc/gpt-pro-supreme/v1",
+            "api_mode": "chat_completions",
+            "api_key": "",
+            "models": list(GPT_PRO_SUPREME_MODELS),
+            "model": GPT_PRO_SUPREME_MODELS[0],
         },
         {
             "id": "openai",
