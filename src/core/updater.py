@@ -13,7 +13,7 @@ import urllib.request
 import urllib.error
 from typing import Callable, Optional, Tuple
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 GITHUB_REPO = "Karanztez/MAX"
 GITHUB_API_LATEST = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 

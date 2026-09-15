@@ -96,7 +96,7 @@ class MCPServerConnection:
                 init_res = self._send_request("initialize", {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {"tools": {}},
-                    "clientInfo": {"name": "MaxPlusAI", "version": "1.0.0"},
+                    "clientInfo": {"name": "MaxPlusAI", "version": "1.0.1"},
                 })
                 if "error" in init_res:
                     raise RuntimeError(f"Handshake error: {init_res['error']}")
