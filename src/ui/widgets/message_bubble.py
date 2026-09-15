@@ -456,6 +456,15 @@ class MessageBubble(tk.Frame):
             self._process_container.pack_forget()
             self._process_header_btn.pack_forget()
 
+    def append_stream_chunk(self, chunk: str) -> None:
+        """Append token chunk in real time with auto-fit and scrolling."""
+        self._content += chunk
+        self.body.configure(state="normal")
+        self.body.insert(tk.END, chunk)
+        self.body.configure(state="disabled")
+        self.body.see(tk.END)
+        self._fit()
+
     def update_content(self, text: str) -> None:
         self._content = text
         self.body.configure(state="normal")

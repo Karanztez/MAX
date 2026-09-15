@@ -176,6 +176,20 @@ class AIClient:
         messages.append(msg)
         return self._call(messages, temperature=temperature, max_tokens=max_tokens)
 
+    def stream_ask(
+        self,
+        prompt: Union[str, list],
+        on_chunk: Optional[Callable[[str], None]] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> str:
+        """Single-turn ask with real-time SSE streaming callback."""
+        messages: list[dict[str, Any]] = []
+        if self.system_prompt:
+            messages.append({"role": "system", "content": self.system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        return self._stream_call(messages, on_chunk=on_chunk, temperature=temperature, max_tokens=max_tokens)
+
     def chat(
         self,
         user_message: Union[str, list],
@@ -186,14 +200,6 @@ class AIClient:
         """
         Multi-turn chat รับ history list คืน history ที่อัปเดตแล้ว
         user_message รับได้ทั้ง str และ list (multimodal: text + image_url)
-
-        Example:
-            client = AIClient()
-            history = []
-            history = client.chat("สวัสดี", history)
-            history = client.chat("ชื่อของฉันคือ Trae", history)
-            history = client.chat("ชื่อฉันคืออะไร?", history)
-            print(history[-1]["content"])
         """
         if history is None:
             history = []
@@ -211,6 +217,86 @@ class AIClient:
         updated.append({"role": "user", "content": user_message})
         updated.append({"role": "assistant", "content": reply})
         return updated
+
+    def stream_chat(
+        self,
+        user_message: Union[str, list],
+        history: Optional[list] = None,
+        on_chunk: Optional[Callable[[str], None]] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> list:
+        """Multi-turn chat with real-time SSE streaming callback."""
+        if history is None:
+            history = []
+        messages: list[dict[str, Any]] = []
+        if self.system_prompt:
+            messages.append({"role": "system", "content": self.system_prompt})
+        messages.extend(history)
+        messages.append({"role": "user", "content": user_message})
+
+        reply = self._stream_call(messages, on_chunk=on_chunk, temperature=temperature, max_tokens=max_tokens)
+        updated = list(history)
+        updated.append({"role": "user", "content": user_message})
+        updated.append({"role": "assistant", "content": reply})
+        return updated
+
+    def _stream_call(
+        self,
+        messages: list[dict[str, Any]],
+        on_chunk: Optional[Callable[[str], None]] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> str:
+        """Execute stream request and yield tokens via on_chunk callback."""
+        if not on_chunk or self.api_mode == "responses":
+            return self._call(messages, temperature=temperature, max_tokens=max_tokens)
+
+        url = f"{self.base_url}/chat/completions"
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+            },
+            method="POST",
+        )
+        full_text: list[str] = []
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                for raw_line in resp:
+                    line = raw_line.decode("utf-8", errors="replace").strip()
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data_str = line[5:].strip()
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                        choices = chunk.get("choices", [])
+                        if choices:
+                            delta = choices[0].get("delta", {})
+                            token = delta.get("content") or ""
+                            if token:
+                                full_text.append(token)
+                                on_chunk(token)
+                    except Exception:
+                        continue
+            res_str = "".join(full_text)
+            if res_str:
+                return res_str
+        except Exception:
+            pass
+        return self._call(messages, temperature=temperature, max_tokens=max_tokens)
 
     def chat_with_tools(
         self,

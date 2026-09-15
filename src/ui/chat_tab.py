@@ -401,7 +401,12 @@ class ChatTab(tk.Frame):
                 reply = self.history[-1]["content"]
                 role_title = "AI 🛠" if logs else "AI"
             else:
-                self.history = self.ai.chat(content, self.history)  # type: ignore[arg-type]
+                def on_chunk(token: str) -> None:
+                    self.after(0, lambda t=token: thinking.append_stream_chunk(t))
+
+                self.history = self.ai.stream_chat(
+                    content, self.history, on_chunk=on_chunk  # type: ignore[arg-type]
+                )
                 reply = self.history[-1]["content"]
                 role_title = "AI"
 
@@ -455,7 +460,10 @@ class ChatTab(tk.Frame):
                 ans = hist[-1]["content"]
                 role_title = "AI 🛠" if logs else "AI"
             else:
-                ans = client.ask(content)  # type: ignore[arg-type]
+                def on_chunk(token: str) -> None:
+                    self.after(0, lambda t=token: thinking.append_stream_chunk(t))
+
+                ans = client.stream_ask(content, on_chunk=on_chunk)  # type: ignore[arg-type]
                 role_title = "AI"
 
             elapsed = time.monotonic() - start_time
