@@ -8,8 +8,7 @@ from pathlib import Path
 import threading
 import time
 import tkinter as tk
-from tkinter import filedialog
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional, Union, TYPE_CHECKING
 
 # Ensure workspace root is in sys.path when executed directly
 _root = str(Path(__file__).resolve().parent.parent.parent)
@@ -359,7 +358,7 @@ class ChatTab(tk.Frame):
         self.entry.delete("1.0", tk.END)
         return t
 
-    def _build_content(self, text: str, b64: Optional[str]) -> object:
+    def _build_content(self, text: str, b64: Optional[str]) -> Union[str, list[dict[str, Any]]]:
         if b64 is None:
             return text
         return [
@@ -389,7 +388,7 @@ class ChatTab(tk.Frame):
         system = self._effective_system_prompt()
         threading.Thread(target=self._run_chat, args=(content, thinking, system), daemon=True).start()
 
-    def _run_chat(self, content: object, thinking: MessageBubble, system: str) -> None:
+    def _run_chat(self, content: Union[str, list[dict[str, Any]]], thinking: MessageBubble, system: str) -> None:
         self.ai.system_prompt = system
         start_time = time.monotonic()
         try:
@@ -407,7 +406,7 @@ class ChatTab(tk.Frame):
                     self.after(0, lambda: self.status_var.set(text))
 
                 self.history, logs = self.ai.chat_with_tools(
-                    content, self.history, tools=tools,  # type: ignore[arg-type]
+                    content, self.history, tools=tools,
                     tool_executor=mcp.execute_tool, on_status=on_status
                 )
                 reply = self.history[-1]["content"]
@@ -417,7 +416,7 @@ class ChatTab(tk.Frame):
                     self.after(0, lambda t=token: thinking.append_stream_chunk(t))
 
                 self.history = self.ai.stream_chat(
-                    content, self.history, on_chunk=on_chunk  # type: ignore[arg-type]
+                    content, self.history, on_chunk=on_chunk
                 )
                 reply = self.history[-1]["content"]
                 role_title = "AI"
@@ -447,7 +446,7 @@ class ChatTab(tk.Frame):
         system = self._effective_system_prompt()
         threading.Thread(target=self._run_ask, args=(content, thinking, system), daemon=True).start()
 
-    def _run_ask(self, content: object, thinking: MessageBubble, system: str) -> None:
+    def _run_ask(self, content: Union[str, list[dict[str, Any]]], thinking: MessageBubble, system: str) -> None:
         start_time = time.monotonic()
         try:
             client = AIClient(api_key=self.ai.api_key, base_url=self.ai.base_url,
@@ -475,7 +474,7 @@ class ChatTab(tk.Frame):
                 def on_chunk(token: str) -> None:
                     self.after(0, lambda t=token: thinking.append_stream_chunk(t))
 
-                ans = client.stream_ask(content, on_chunk=on_chunk)  # type: ignore[arg-type]
+                ans = client.stream_ask(content, on_chunk=on_chunk)
                 role_title = "AI"
 
             elapsed = time.monotonic() - start_time

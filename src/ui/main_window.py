@@ -126,7 +126,7 @@ class MaxPlusGUI(tk.Tk):
                 img = Image.open(icon_path).convert("RGBA")
                 self._app_icon_img = img
                 self._app_icon_photo = ImageTk.PhotoImage(img)
-                self.iconphoto(True, self._app_icon_photo)
+                self.iconphoto(True, self._app_icon_photo)  # type: ignore
 
             # 2. Header logo (from max_logo.png or max_icon.png)
             logo_path = None
@@ -468,7 +468,8 @@ class MaxPlusGUI(tk.Tk):
         import sys
         maxplus_gui = sys.modules.get("maxplus_gui")
         tray_ok = getattr(maxplus_gui, "_TRAY_OK", _TRAY_OK) if maxplus_gui is not None else _TRAY_OK
-        if not (tray_ok and _PIL_OK):
+        tray_mod: Any = pystray
+        if not (tray_ok and _PIL_OK and tray_mod is not None):
             return
         if self._app_icon_img is not None:
             icon_image = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
@@ -484,12 +485,12 @@ class MaxPlusGUI(tk.Tk):
             draw = ImageDraw.Draw(icon_image)
             draw.rounded_rectangle((5, 5, 59, 59), radius=14, fill="#7c8cff")
             draw.text((19, 18), "M", fill="white", stroke_width=1, stroke_fill="white")
-        menu = pystray.Menu(
-            pystray.MenuItem("เปิด MAX", lambda _i, _m: self._tray_queue.put("show"), default=True),
-            pystray.MenuItem("จับภาพหน้าจอ", lambda _i, _m: self._tray_queue.put("capture")),
-            pystray.MenuItem("ออก", lambda _i, _m: self._tray_queue.put("exit")),
+        menu = tray_mod.Menu(
+            tray_mod.MenuItem("เปิด MAX", lambda _i, _m: self._tray_queue.put("show"), default=True),
+            tray_mod.MenuItem("จับภาพหน้าจอ", lambda _i, _m: self._tray_queue.put("capture")),
+            tray_mod.MenuItem("ออก", lambda _i, _m: self._tray_queue.put("exit")),
         )
-        self._tray = pystray.Icon("MaxPlusAI", icon_image, "MAX", menu)
+        self._tray = tray_mod.Icon("MaxPlusAI", icon_image, "MAX", menu)
         threading.Thread(target=self._tray.run, daemon=True).start()
 
     def _poll_tray_queue(self) -> None:
@@ -575,9 +576,9 @@ class MaxPlusGUI(tk.Tk):
         self._toolbar.configure(bg=T["bg"])
         self._toolbar_left.configure(bg=T["bg"])
         self._toolbar_right.configure(bg=T["bg"])
-        if getattr(self, "_logo_lbl", None) is not None:
+        if isinstance(self._logo_lbl, tk.Label):
             self._logo_lbl.configure(bg=T["bg"])
-        if getattr(self, "_title_lbl", None) is not None:
+        if isinstance(self._title_lbl, tk.Label):
             self._title_lbl.configure(bg=T["bg"], fg=T["fg"])
         self._proj_btn.configure(bg=T["bg2"], fg=T["accent"], activebackground=T["bg3"])
         self._add_tab_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
@@ -585,7 +586,7 @@ class MaxPlusGUI(tk.Tk):
         self._theme_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
         self._settings_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
         self._mcp_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
-        if hasattr(self, "_health_btn"):
+        if isinstance(getattr(self, "_health_btn", None), tk.Button):
             self._health_btn.configure(bg=T["bg2"], fg=T["accent"], activebackground=T["bg3"], activeforeground=T["accent_hover"])
 
         # update notebook style
