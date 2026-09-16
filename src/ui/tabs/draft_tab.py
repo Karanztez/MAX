@@ -26,6 +26,7 @@ try:
         FONT_TINY,
         T,
     )
+    from ui.widgets.notebook_utils import enable_smooth_tab_drag
 except (ImportError, ModuleNotFoundError):
     from src.core.background_runner import BackgroundTestRunner, TestRunResult  # type: ignore[no-redef]
     from src.core.draft_manager import CodeDraft, DraftManager  # type: ignore[no-redef]
@@ -38,6 +39,7 @@ except (ImportError, ModuleNotFoundError):
         FONT_TINY,
         T,
     )
+    from src.ui.widgets.notebook_utils import enable_smooth_tab_drag  # type: ignore[no-redef]
 
 
 class DraftReviewTab(tk.Frame):
@@ -196,6 +198,7 @@ class DraftReviewTab(tk.Frame):
 
         self.sub_notebook = ttk.Notebook(right_frame)
         self.sub_notebook.pack(fill="both", expand=True)
+        enable_smooth_tab_drag(self.sub_notebook)
 
         # Tab 1: Diff & Code
         self.diff_tab = tk.Frame(self.sub_notebook, bg=T["bg"])

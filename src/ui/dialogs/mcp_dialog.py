@@ -6,8 +6,14 @@ import tkinter as tk
 from tkinter import ttk, simpledialog, messagebox
 from typing import Any, Optional
 
-from src.core.mcp_manager import MCPManager
-from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_TITLE
+try:
+    from core.mcp_manager import MCPManager
+    from ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_TITLE
+    from ui.widgets.notebook_utils import enable_smooth_tab_drag
+except (ImportError, ModuleNotFoundError):
+    from src.core.mcp_manager import MCPManager  # type: ignore[no-redef]
+    from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_TITLE  # type: ignore[no-redef]
+    from src.ui.widgets.notebook_utils import enable_smooth_tab_drag  # type: ignore[no-redef]
 
 
 class MCPManagerDialog(tk.Toplevel):
@@ -49,6 +55,7 @@ class MCPManagerDialog(tk.Toplevel):
 
         nb = ttk.Notebook(body)
         nb.pack(fill="both", expand=True)
+        enable_smooth_tab_drag(nb)
 
         # Tab 1: Tools list
         tools_tab = tk.Frame(nb, bg=T["bg2"], padx=12, pady=12)

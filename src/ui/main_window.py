@@ -41,6 +41,7 @@ try:
     from ui.dialogs.mcp_dialog import MCPManagerDialog
     from ui.dialogs.update_dialog import UpdateDialog
     from ui.dialogs.health_dialog import HealthCheckDialog
+    from ui.widgets.notebook_utils import enable_smooth_tab_drag
     from core.mcp.builtins.workspace_tools import set_workspace_ui_dispatcher
 except (ImportError, ModuleNotFoundError):
     from src.core.provider_profiles import default_profiles, normalize_profiles  # type: ignore[no-redef]
@@ -57,6 +58,7 @@ except (ImportError, ModuleNotFoundError):
     from src.ui.dialogs.mcp_dialog import MCPManagerDialog  # type: ignore[no-redef]
     from src.ui.dialogs.update_dialog import UpdateDialog  # type: ignore[no-redef]
     from src.ui.dialogs.health_dialog import HealthCheckDialog  # type: ignore[no-redef]
+    from src.ui.widgets.notebook_utils import enable_smooth_tab_drag  # type: ignore[no-redef]
     from src.core.mcp.builtins.workspace_tools import set_workspace_ui_dispatcher  # type: ignore[no-redef]
 
 
@@ -306,6 +308,7 @@ class MaxPlusGUI(tk.Tk):
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill="both", expand=True, padx=10, pady=(0, 4))
         self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_switched)
+        enable_smooth_tab_drag(self.notebook, lambda: self._tabs)
 
     # ── tabs ───────────────────────────────────────────────────────────────
     def _new_tab(self) -> None:
