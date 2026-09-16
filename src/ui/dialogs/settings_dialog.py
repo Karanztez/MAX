@@ -180,6 +180,15 @@ class SettingsDialog(tk.Toplevel):
             info = check_github_release()
             if info and is_newer_version(info.tag_name, APP_VERSION):
                 UpdateDialog(self, info)
+            elif info and info.download_url:
+                reinstall = messagebox.askyesno(
+                    "อัปเดต MAX",
+                    f"คุณกำลังใช้งาน MAX เวอร์ชันล่าสุด (v{APP_VERSION}) แล้ว\n\n"
+                    f"คุณต้องการดาวน์โหลดและติดตั้งตัวโปรแกรมล่าสุดใหม่จาก GitHub Release หรือไม่?",
+                    parent=self
+                )
+                if reinstall:
+                    UpdateDialog(self, info)
             else:
                 messagebox.showinfo("อัปเดต MAX", f"คุณกำลังใช้งาน MAX เวอร์ชันล่าสุด (v{APP_VERSION}) แล้ว", parent=self)
 

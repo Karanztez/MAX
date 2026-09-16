@@ -502,7 +502,9 @@ class MaxTerminalApp:
 
         if not is_newer_version(info.version, APP_VERSION):
             safe_print(color(f"✅ คุณกำลังใช้งาน MAX AI เวอร์ชันล่าสุดแล้ว (v{APP_VERSION})", Colors.GREEN))
-            return
+            force_prompt = input(color("⚡ ต้องการบังคับดาวน์โหลดและติดตั้งตัวโปรแกรมล่าสุดใหม่หรือไม่? [y/N]: ", Colors.CYAN)).strip().lower()
+            if force_prompt not in {"y", "yes"}:
+                return
 
         safe_print(color(f"\n🚀 พบเวอร์ชันใหม่: {info.tag_name} (เวอร์ชันปัจจุบัน: v{APP_VERSION})", Colors.BOLD + Colors.GREEN))
         safe_print(color(f"หัวข้อ: {info.title}", Colors.BOLD))

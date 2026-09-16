@@ -905,11 +905,22 @@ class MaxPlusGUI(tk.Tk):
             elif info:
                 if tab is not None:
                     tab.status_var.set(f"คุณใช้งานเวอร์ชันล่าสุดแล้ว (v{APP_VERSION})")
-                messagebox.showinfo(
-                    "อัปเดต MAX",
-                    f"คุณกำลังใช้งาน MAX เวอร์ชันล่าสุด (v{APP_VERSION}) แล้ว",
-                    parent=self
-                )
+                if info.download_url:
+                    reinstall = messagebox.askyesno(
+                        "อัปเดต MAX",
+                        f"คุณกำลังใช้งาน MAX เวอร์ชันล่าสุด (v{APP_VERSION}) แล้ว\n\n"
+                        f"คุณต้องการดาวน์โหลดและติดตั้งตัวโปรแกรมล่าสุดใหม่จาก GitHub Release หรือไม่?\n"
+                        f"(เหมาะสำหรับกรณีที่มีการปรับปรุงโค้ดหรือคอมไพล์ release ทับในเวอร์ชันเดิม)",
+                        parent=self
+                    )
+                    if reinstall:
+                        self._show_update_dialog(info)
+                else:
+                    messagebox.showinfo(
+                        "อัปเดต MAX",
+                        f"คุณกำลังใช้งาน MAX เวอร์ชันล่าสุด (v{APP_VERSION}) แล้ว",
+                        parent=self
+                    )
             else:
                 if tab is not None:
                     tab.status_var.set("ไม่สามารถดึงข้อมูลเวอร์ชันจาก GitHub ได้")

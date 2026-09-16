@@ -11,11 +11,11 @@ import webbrowser
 from typing import Optional
 
 try:
-    from core.updater import UpdateInfo, APP_VERSION, download_file, is_frozen_exe, apply_exe_update_and_restart
+    from core.updater import UpdateInfo, APP_VERSION, download_file, is_frozen_exe, apply_exe_update_and_restart, is_newer_version
     from core.settings_store import SettingsStore
     from ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_HDR, FONT_MONO
 except (ImportError, ModuleNotFoundError):
-    from src.core.updater import UpdateInfo, APP_VERSION, download_file, is_frozen_exe, apply_exe_update_and_restart  # type: ignore[no-redef]
+    from src.core.updater import UpdateInfo, APP_VERSION, download_file, is_frozen_exe, apply_exe_update_and_restart, is_newer_version  # type: ignore[no-redef]
     from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
     from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_HDR, FONT_MONO  # type: ignore[no-redef]
 
@@ -63,9 +63,12 @@ class UpdateDialog(tk.Toplevel):
         hdr_frame = tk.Frame(container, bg=T["bg"])
         hdr_frame.pack(fill="x", pady=(0, 14))
 
+        is_newer = is_newer_version(self.info.tag_name, APP_VERSION)
+        title_text = "🪶 มีเวอร์ชันใหม่พร้อมให้อัปเดต" if is_newer else "🔄 ติดตั้งเวอร์ชันล่าสุดใหม่ (Reinstall Latest Build)"
+
         title_lbl = tk.Label(
             hdr_frame,
-            text="🪶 มีเวอร์ชันใหม่พร้อมให้อัปเดต",
+            text=title_text,
             font=FONT_HDR,
             bg=T["bg"],
             fg=T["fg"],
@@ -85,23 +88,33 @@ class UpdateDialog(tk.Toplevel):
         )
         cur_lbl.pack(side="left")
 
-        arrow_lbl = tk.Label(
-            ver_frame,
-            text="  ➜  ",
-            font=FONT_TINY,
-            bg=T["bg"],
-            fg=T["accent"],
-        )
-        arrow_lbl.pack(side="left")
+        if is_newer:
+            arrow_lbl = tk.Label(
+                ver_frame,
+                text="  ➜  ",
+                font=FONT_TINY,
+                bg=T["bg"],
+                fg=T["accent"],
+            )
+            arrow_lbl.pack(side="left")
 
-        new_lbl = tk.Label(
-            ver_frame,
-            text=f"เวอร์ชันใหม่: {self.info.tag_name}",
-            font=FONT_BOLD,
-            bg=T["bg"],
-            fg=T["accent"],
-        )
-        new_lbl.pack(side="left")
+            new_lbl = tk.Label(
+                ver_frame,
+                text=f"เวอร์ชันใหม่: {self.info.tag_name}",
+                font=FONT_BOLD,
+                bg=T["bg"],
+                fg=T["accent"],
+            )
+            new_lbl.pack(side="left")
+        else:
+            status_tag = tk.Label(
+                ver_frame,
+                text=f"  (Build ล่าสุด: {self.info.tag_name})",
+                font=FONT_TINY,
+                bg=T["bg"],
+                fg=T["accent"],
+            )
+            status_tag.pack(side="left")
 
         # Release Title
         if self.info.title and self.info.title != self.info.tag_name:
