@@ -20,7 +20,7 @@ def _blob(data: bytes) -> tuple[_DataBlob, object]:
     return value, buffer
 
 
-def _windows_apis() -> tuple[object, object]:
+def _windows_apis() -> tuple[Any, Any]:
     crypt32 = ctypes.windll.crypt32
     kernel32 = ctypes.windll.kernel32
     blob_ptr = ctypes.POINTER(_DataBlob)
@@ -101,9 +101,12 @@ class SettingsStore:
         """Load encrypted provider profiles, with migration from version 1."""
         from copy import deepcopy
         try:
-            from src.core.provider_profiles import normalize_profiles
-        except ImportError:
-            from provider_profiles import normalize_profiles
+            from .provider_profiles import normalize_profiles
+        except (ImportError, ValueError):
+            try:
+                from core.provider_profiles import normalize_profiles
+            except ImportError:
+                from src.core.provider_profiles import normalize_profiles  # type: ignore[no-redef]
 
         profiles = deepcopy(defaults)
         selected_id = profiles[0]["id"] if profiles else ""
