@@ -7,11 +7,14 @@
 ## 1. ข้อกำหนดเบื้องต้น (Prerequisites)
 
 เนื่องจาก `teamai-cli` ทำงานบน Node.js คุณจะต้องมี:
+
 1. **Node.js 20+** ติดตั้งอยู่บนเครื่อง ([ดาวน์โหลดจาก nodejs.org](https://nodejs.org/))
 2. ติดตั้ง TeamAI CLI ทั่วทั้งระบบ:
+
    ```bash
    npm install -g teamai-cli
    ```
+
    *(หากไม่ได้ติดตั้งล่วงหน้า MAX จะพยายามเรียกผ่าน `npx -y teamai-cli` ให้อัตโนมัติ)*
 
 ---
@@ -21,7 +24,7 @@
 คุณสามารถพิมพ์คำสั่งเหล่านี้ในช่องแชทของ MAX (ทั้งใน GUI และ CLI) ได้ทันที:
 
 | คำสั่ง | คำอธิบาย |
-|---|---|
+| --- | --- |
 | `/teamai status` | ตรวจสอบสถานะการเชื่อมต่อ Git Repo ของทีม และเวอร์ชัน TeamAI |
 | `/teamai pull` | ดึง Skills, Rules และคอนฟิก MCP ล่าสุดของทีมจาก GitHub มารีเฟรชลง MAX อัตโนมัติ |
 | `/teamai push` | ส่งต่อทักษะใหม่หรือบทเรียนจากเซสชัน (Learnings) ขึ้นสู่ทีม |
@@ -33,6 +36,7 @@
 ## 3. การทำงานของ Agent MCP Tools (`teamai_command` & `teamai_sync`)
 
 MAX มาพร้อมกับ Built-in MCP Tools ที่ AI สามารถเรียกใช้งานได้ด้วยตนเองอย่างอิสระ:
+
 1. **`teamai_sync`**: เมื่อผู้ใช้บอกให้ AI *"ช่วยซิงค์ความรู้ของทีมหน่อย"* หรือ *"อัปเดตสกิลทีม"* AI จะเรียก tool นี้เพื่อสั่ง `teamai pull` และเรียก `SkillManager().refresh()` เพื่อให้สกิลใหม่มีผลในทันทีโดยไม่ต้องรีสตาร์ตโปรแกรม
 2. **`teamai_command`**: อนุญาตให้ AI รันคำสั่งขั้นสูงของ TeamAI เช่น `teamai projects`, `teamai roles`, `teamai source` เพื่อจัดการการเข้าถึงสกิลตามบทบาทของผู้ใช้
 
@@ -41,7 +45,8 @@ MAX มาพร้อมกับ Built-in MCP Tools ที่ AI สามา�
 ## 4. แนะนำโครงสร้าง Team Repository
 
 ใน Git Repo กลางของทีม แนะนำให้จัดโครงสร้างไฟล์ตามมาตรฐานของ TeamAI ดังนี้:
-```
+
+```text
 my-team-skills/
 ├── skills/
 │   ├── code-review/
@@ -53,4 +58,5 @@ my-team-skills/
 └── mcp/
     └── mcp.yaml
 ```
+
 เมื่อรัน `/teamai pull` โฟลเดอร์ `skills/` จะถูกดึงลงมาที่โปรเจกต์ MAX ของทุกคนในทีมโดยอัตโนมัติ!

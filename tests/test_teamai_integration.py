@@ -13,6 +13,7 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
+    import core.mcp.builtins.teamai_tools as t_mod
     from core.mcp.builtins.teamai_tools import (
         get_teamai_binary,
         run_teamai,
@@ -21,8 +22,10 @@ try:
         get_teamai_tools,
     )
     from core.mcp_manager import MCPManager
+    from core.skill_manager import SkillManager
     from cli import MaxTerminalApp
 except (ImportError, ModuleNotFoundError):
+    import src.core.mcp.builtins.teamai_tools as t_mod  # type: ignore[no-redef]
     from src.core.mcp.builtins.teamai_tools import (  # type: ignore[no-redef]
         get_teamai_binary,
         run_teamai,
@@ -31,6 +34,7 @@ except (ImportError, ModuleNotFoundError):
         get_teamai_tools,
     )
     from src.core.mcp_manager import MCPManager  # type: ignore[no-redef]
+    from src.core.skill_manager import SkillManager  # type: ignore[no-redef]
     from src.cli import MaxTerminalApp  # type: ignore[no-redef]
 
 
@@ -55,7 +59,7 @@ class TestTeamAIIntegration(unittest.TestCase):
                 self.assertEqual(name, "")
 
     def test_run_teamai_missing_binary(self):
-        with patch("core.mcp.builtins.teamai_tools.get_teamai_binary" if "core.mcp.builtins.teamai_tools" in sys.modules else "src.core.mcp.builtins.teamai_tools.get_teamai_binary", return_value=([], "")):
+        with patch.object(t_mod, "get_teamai_binary", return_value=([], "")):
             code, out = run_teamai(["status"])
             self.assertEqual(code, -1)
             self.assertIn("ไม่พบคำสั่ง 'teamai' หรือ 'npx'", out)
@@ -67,7 +71,6 @@ class TestTeamAIIntegration(unittest.TestCase):
         mock_proc.stdout = "TeamAI version 1.2.0 - Synced with git@github.com:my-team/ai-skills.git"
         mock_run.return_value = mock_proc
 
-        import src.core.mcp.builtins.teamai_tools as t_mod
         with patch.object(t_mod, "get_teamai_binary", return_value=(["teamai"], "teamai")):
             code, out = run_teamai(["status"])
             self.assertEqual(code, 0)
@@ -80,9 +83,8 @@ class TestTeamAIIntegration(unittest.TestCase):
         mock_proc.stdout = "Pulled 3 new skills: code-review, security-audit, api-design"
         mock_run.return_value = mock_proc
 
-        import src.core.mcp.builtins.teamai_tools as t_mod
         with patch.object(t_mod, "get_teamai_binary", return_value=(["teamai"], "teamai")):
-            with patch("core.skill_manager.SkillManager.refresh" if "core.skill_manager" in sys.modules else "src.core.skill_manager.SkillManager.refresh") as mock_refresh:
+            with patch.object(SkillManager, "refresh") as mock_refresh:
                 code, out = run_teamai(["pull"])
                 self.assertEqual(code, 0)
                 mock_refresh.assert_called()
@@ -104,7 +106,12 @@ class TestTeamAIIntegration(unittest.TestCase):
         mock_run.return_value = mock_proc
 
         with TemporaryDirectory() as tmpdir:
-            with patch("core.settings_store.SettingsStore.__init__" if "core.settings_store" in sys.modules else "src.core.settings_store.SettingsStore.__init__", lambda self, p=None: setattr(self, "path", Path(tmpdir) / "test_s.json")):
+            try:
+                from core.settings_store import SettingsStore
+            except (ImportError, ModuleNotFoundError):
+                from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
+
+            with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(tmpdir) / "test_s.json")):
                 app = MaxTerminalApp()
                 res = app.handle_command("/teamai status")
                 self.assertTrue(res)
