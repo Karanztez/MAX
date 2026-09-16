@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Java & Kotlin Project Support**: Added specialized [`skills/java-developer`](file:///skills/java-developer/SKILL.md) and [`skills/kotlin-developer`](file:///skills/kotlin-developer/SKILL.md) skills covering Gradle, Maven, Spring Boot, Android, Coroutines, Compose, and Termux OpenJDK execution.
 - **CLI Self-Updater (`/update`)**: Added command in Terminal/Mobile CLI to check GitHub releases, preview Changelogs, and auto-download/update both frozen EXE and source/git environments.
 - **Interactive Numbered Setup (1-2-3-4)**: First-run setup and `/setup` wizard in CLI allowing users to choose AI Provider by number [1..N], select model by number [1..N], and configure custom endpoints.
 - **In-Chat API Key & Base URL Guard**: Prompt directly inside the CLI chat session whenever API keys or Base URLs are missing, with instant secure DPAPI/POSIX persistence.
