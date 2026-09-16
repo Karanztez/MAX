@@ -5,8 +5,12 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.core.ai_client import AIClient
-from src.core.provider_profiles import CLAUDE_MODELS, default_profiles, normalize_profiles
+try:
+    from core.ai_client import AIClient
+    from core.provider_profiles import CLAUDE_MODELS, default_profiles, normalize_profiles
+except ImportError:
+    from src.core.ai_client import AIClient  # type: ignore[no-redef]
+    from src.core.provider_profiles import CLAUDE_MODELS, default_profiles, normalize_profiles  # type: ignore[no-redef]
 
 
 class _Response:

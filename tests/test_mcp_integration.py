@@ -10,9 +10,14 @@ from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.core.skill_manager import SkillManager
-from src.core.mcp_manager import MCPManager, MCPTool
-from src.core.ai_client import AIClient
+try:
+    from core.skill_manager import SkillManager
+    from core.mcp_manager import MCPManager, MCPTool
+    from core.ai_client import AIClient
+except ImportError:
+    from src.core.skill_manager import SkillManager  # type: ignore[no-redef]
+    from src.core.mcp_manager import MCPManager, MCPTool  # type: ignore[no-redef]
+    from src.core.ai_client import AIClient  # type: ignore[no-redef]
 
 
 class TestSkillsAndMCP(unittest.TestCase):

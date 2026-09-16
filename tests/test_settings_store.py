@@ -4,8 +4,12 @@ from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.core.settings_store import SettingsStore
-from src.core.provider_profiles import default_profiles
+try:
+    from core.settings_store import SettingsStore
+    from core.provider_profiles import default_profiles
+except ImportError:
+    from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
+    from src.core.provider_profiles import default_profiles  # type: ignore[no-redef]
 
 
 def main() -> None:

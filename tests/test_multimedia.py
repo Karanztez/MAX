@@ -10,8 +10,12 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.core.mcp_manager import MCPManager, _builtin_generate_image, _builtin_generate_video
-from src.core.skill_manager import SkillManager
+try:
+    from core.mcp_manager import MCPManager, _builtin_generate_image, _builtin_generate_video
+    from core.skill_manager import SkillManager
+except ImportError:
+    from src.core.mcp_manager import MCPManager, _builtin_generate_image, _builtin_generate_video  # type: ignore[no-redef]
+    from src.core.skill_manager import SkillManager  # type: ignore[no-redef]
 
 
 class TestMultimediaTools(unittest.TestCase):

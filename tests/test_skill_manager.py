@@ -4,7 +4,10 @@ from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.core.skill_manager import SkillManager
+try:
+    from core.skill_manager import SkillManager
+except ImportError:
+    from src.core.skill_manager import SkillManager  # type: ignore[no-redef]
 
 
 def main() -> None:

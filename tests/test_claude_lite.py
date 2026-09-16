@@ -3,7 +3,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.core.ai_client import AIClient
+try:
+    from core.ai_client import AIClient
+except ImportError:
+    from src.core.ai_client import AIClient  # type: ignore[no-redef]
 
 API_KEY  = "ccsk-5a038c1d0145e630a8b4296893d08a4ea30c603c77cc9372b62cf621f331984a"
 BASE_URL = "https://api.maxplus-ai.cc/claude-antigravity-full/v1"
