@@ -13,7 +13,7 @@ setup(
     author="Karanztez",
     license="Non-Commercial / Proprietary",
     url="https://github.com/Karanztez/MAX",
-    packages=find_packages(include=["src", "src.*"]),
+    packages=find_packages(include=["src", "src.*", "max_ai", "max_ai.*"]),
     include_package_data=True,
     python_requires=">=3.8",
     install_requires=[
@@ -21,6 +21,10 @@ setup(
         "pystray>=0.19.5; sys_platform == 'win32'",
         "psutil>=5.9.0",
     ],
+    extras_require={
+        "discord": ["discord.py>=2.3.0"],
+        "all": ["discord.py>=2.3.0", "psutil>=5.9.0"],
+    },
     entry_points={
         "console_scripts": [
             "max=src.cli:run_cli",

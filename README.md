@@ -200,6 +200,85 @@ df -h | max -p "ตรวจสอบพื้นที่ดิสก์ หา
 
 ---
 
+## 🐍 MAX AI Python SDK & Public API Package
+
+คุณสามารถนำ MAX AI ไปติดตั้งและใช้งานเป็น **Python Package (`import max_ai`)** ในโปรเจกต์อื่นๆ เช่น **Discord Bot, Telegram Bot, FastAPI Server, หรือ Automation Scripts** ได้ทันที
+
+### 📦 การติดตั้งในโปรเจกต์อื่น
+```bash
+# ติดตั้งแบบมาตรฐาน
+pip install git+https://github.com/Karanztez/MAX.git
+
+# หรือติดตั้งพร้อมส่วนเสริมสำหรับ Discord Bot
+pip install "max-ai[discord] @ git+https://github.com/Karanztez/MAX.git"
+```
+
+---
+
+### 🤖 1. ตัวอย่างสร้าง Discord AI Bot (ไม่ถึง 10 บรรทัด)
+```python
+import os
+from max_ai.discord import create_max_bot
+
+bot = create_max_bot(
+    discord_token=os.environ.get("DISCORD_BOT_TOKEN"),
+    max_api_key=os.environ.get("MAXPLUS_API_KEY"),
+    model="gemini-2.5-flash",
+    command_prefix="!max ",
+    system_prompt="You are MAX, a helpful and friendly Discord AI assistant.",
+    enable_tools=True,  # เปิดใช้งานเครื่องมือคำนวณและค้นหาอัตโนมัติ
+)
+
+# เริ่มต้นบอท (รองรับ Multi-turn chat แยกตามห้อง, Mention @Bot, และคำสั่ง !max reset)
+bot.run()
+```
+
+---
+
+### ⚡ 2. ใช้งานแบบ Python SDK ทั่วไป (Sync & Async)
+```python
+import max_ai
+
+# ถาม-ตอบคำถามเดียว (Single-shot Ask)
+reply = max_ai.ask("อธิบายทฤษฎีควอนตัมแบบเข้าใจง่าย")
+print(reply)
+
+# สร้าง Agent พร้อม Session Memory (จำบริบทการสนทนา)
+agent = max_ai.Agent(model="gemini-2.5-flash")
+session = agent.create_session(session_id="channel-101")
+
+# คุยต่อเนื่อง
+res1 = session.send("สวัสดีครับ ผมชื่อสมชาย")
+res2 = session.send("ผมชื่ออะไรนะ?")
+print(res2.text)  # "คุณชื่อสมชายครับ"
+
+# รองรับ Asynchronous สำหรับ FastAPI / Discord / Aiohttp
+async def handle_request():
+    response = await agent.ask_async("ช่วยเขียนโค้ด Python FastAPI")
+    print(response)
+```
+
+---
+
+### 👥 3. Multi-Agent Team Pipeline ในโค้ด Python
+```python
+import max_ai
+
+team = max_ai.Team(name="Dev Team")
+team.add_member(1, name="Architect", role="planner", model="gemini-2.5-pro")
+team.add_member(2, name="Engineer", role="coder", model="deepseek-v4.1-flash")
+team.add_member(3, name="Auditor", role="reviewer", model="claude-3-7-sonnet")
+
+# เชื่อมต่อกระบวนการทำงาน: Architect -> Engineer -> Auditor
+team.link(from_id=1, to_id=2)
+team.link(from_id=2, to_id=3)
+
+results = team.run("สร้าง Discord bot เล่นเพลง")
+print(results["final_output"])
+```
+
+---
+
 ## 🛠 ฟีเจอร์หลัก (Key Features)
 
 - **🌐 Cross-Platform & Mobile Support:** รองรับเต็มรูปแบบทั้ง Windows GUI, Linux Server, VPS, Docker, macOS และมือถือ Android (Termux)

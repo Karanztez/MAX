@@ -14,13 +14,17 @@ dependencies = [
     "Pillow>=10.0.0",
 ]
 
+[project.optional-dependencies]
+discord = ["discord.py>=2.3.0"]
+all = ["discord.py>=2.3.0", "psutil>=5.9.0"]
+
 [project.scripts]
 max = "src.cli:run_cli"
 max-gui = "src.ui.main_window:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*"]
+include = ["src*", "max_ai*"]
 
 [tool.pyright]
 extraPaths = ["."]
