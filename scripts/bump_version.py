@@ -79,7 +79,7 @@ def apply_version(new_version: str) -> None:
         )
         updater_path.write_text(content, encoding="utf-8")
 
-    # 3. src/core/mcp_manager.py
+    # 3. src/core/mcp_manager.py & connection.py
     mcp_path = ROOT_DIR / "src" / "core" / "mcp_manager.py"
     if mcp_path.exists():
         content = re.sub(
@@ -88,6 +88,15 @@ def apply_version(new_version: str) -> None:
             mcp_path.read_text(encoding="utf-8"),
         )
         mcp_path.write_text(content, encoding="utf-8")
+
+    conn_path = ROOT_DIR / "src" / "core" / "mcp" / "connection.py"
+    if conn_path.exists():
+        content = re.sub(
+            r'("clientInfo":\s*\{"name":\s*"MaxPlusAI",\s*"version":\s*")[^"]+("\})',
+            rf'\g<1>{ver}\g<2>',
+            conn_path.read_text(encoding="utf-8"),
+        )
+        conn_path.write_text(content, encoding="utf-8")
 
     # 4. setup.py
     setup_path = ROOT_DIR / "setup.py"

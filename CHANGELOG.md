@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.0.7] - 2026-09-16
+
+### 🚀 IDE Debug Inspector, Background Test Runner & Staged Drafts Tab
+
+#### 🔍 IDE Debug & Diagnostics Reviewer (`IDEInspector`)
+- **Python AST Syntax Validation:** Instant detection of syntax errors and compile failures with precise file, line, column, rule code, and error messages.
+- **Static Analysis & Linters:** Integration with Pyrefly, Flake8, Ruff, and compiler error extraction.
+- **Code Draft Pre-Review:** Compares diagnostics before and after proposed edits to ensure patches fix existing issues without introducing new errors.
+
+#### 🧪 Asynchronous Background Test Runner (`BackgroundTestRunner`)
+- **Non-Blocking Execution:** Runs automated tests (`unittest`, `pytest`, custom validation scripts) in background daemon threads without freezing the desktop GUI or chat.
+- **Live Terminal Logging:** Captures and streams stdout/stderr in real time, tracking execution duration, exit codes, and pass/fail metrics.
+- **Graceful Cancellation & Timeout:** Cancels hanging tests safely with timeout safeguards.
+
+#### 📝 Drafts & Review GUI Tab (`DraftReviewTab`)
+- **Dedicated Toolbar Button:** Added `📝 Drafts` button on the primary desktop toolbar for instant access.
+- **Staged Drafts & Color Diffs:** Side-by-side / unified diff viewer with syntax color tags (green additions, red deletions).
+- **Safe Apply & Discard:** One-click `✅ นำไปใช้ (Apply)` with automatic `.bak` backup creation, and `🗑 ยกเลิก (Discard)`.
+- **IDE Diagnostics Panel:** Tabular view of detected project and file issues with one-click `🤖 ส่งให้ AI แก้ไขอัตโนมัติ (Send to AI)`.
+- **Background Test Console:** Embedded dark monospace terminal widget with one-click test execution and preset buttons.
+
+#### 🛠 Autonomous MCP Diagnostic Tools
+- Added 7 new autonomous tools for AI agents:
+  - `inspect_ide_diagnostics`: Scan files or entire workspaces for syntax and static errors.
+  - `create_code_draft`: Stage code modifications in the Drafts tab for user inspection.
+  - `apply_code_draft`: Apply approved drafts to target files.
+  - `discard_code_draft`: Discard unneeded drafts.
+  - `list_code_drafts`: Enumerate pending and finished drafts.
+  - `run_background_test`: Trigger automated test runs in the background.
+  - `get_background_test_status`: Check test results and terminal output.
+
+#### 🧠 Agent Tool Loop & Response Synthesis Enhancements
+- **Loop Breaker:** Detects repeated tool calls with identical arguments to prevent long execution stalls.
+- **GitHub README Optimization:** Directly retrieves raw `README.md` for GitHub repository links in `fetch_web_page` to prevent HTML bloat.
+- **Compulsory Thai Synthesis:** Enforces structured 4-part response synthesis to eliminate abrupt cut-offs and `(ดำเนินการเสร็จสิ้น)`.
+- **Fallback Log Reporting:** Automatically generates structured markdown reports from execution logs if the model stays silent.
+
 ## [v1.0.6] - 2026-09-16
 
 ### 🚀 Initial Major Consolidated Release — MAX for AI
