@@ -234,6 +234,23 @@ jobs:
           npm test
 
       - name: Publish to GitHub Packages
-        run: npm publish
+        shell: bash
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VER=$(node -p "require('./package.json').version")
+          echo "Checking if $PKG_NAME@$PKG_VER is already published..."
+          if npm view "$PKG_NAME@$PKG_VER" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "::notice::$PKG_NAME@$PKG_VER is already published on GitHub Packages. Skipping duplicate publish."
+          else
+            npm publish || {
+              EXIT_CODE=$?
+              echo "::warning::npm publish exited with code $EXIT_CODE. Checking registry..."
+              if npm view "$PKG_NAME@$PKG_VER" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+                echo "::notice::$PKG_NAME@$PKG_VER already exists on registry. Skipping duplicate publish error."
+              else
+                exit $EXIT_CODE
+              fi
+            }
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
