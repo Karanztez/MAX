@@ -196,10 +196,44 @@ class ChatTab(tk.Frame):
                     bg_card: str, hdr_color: str,
                     img: Optional["Image.Image"] = None,
                     is_thinking: bool = False) -> MessageBubble:
-        b = MessageBubble(self.scroll.inner, role, content, bg_card, hdr_color, img=img, is_thinking=is_thinking)
+        b = MessageBubble(
+            self.scroll.inner,
+            role,
+            content,
+            bg_card,
+            hdr_color,
+            img=img,
+            is_thinking=is_thinking,
+            on_open_media=self._on_open_media,
+        )
         self._bubbles.append(b)
         self.after(60, self.scroll.scroll_bottom)
         return b
+
+    def _on_open_media(self, file_path: str, media_type: str = "image", prompt: str = "") -> None:
+        """Forward media open request to MainWindow to open dedicated media tab."""
+        top = self.winfo_toplevel()
+        open_media_tab = getattr(top, "open_media_tab", None)
+        if callable(open_media_tab):
+            open_media_tab(file_path, media_type=media_type, prompt=prompt)
+
+    def _check_and_auto_open_media(self, content: str, logs: Optional[list[str]] = None) -> None:
+        """Auto open newly generated media file in a new viewer tab."""
+        full_text = content
+        if logs:
+            full_text += "\n" + "\n".join(logs)
+        try:
+            from ui.widgets.message_bubble import extract_media_items
+        except (ImportError, ModuleNotFoundError):
+            from src.ui.widgets.message_bubble import extract_media_items  # type: ignore[no-redef]
+
+        items = extract_media_items(full_text)
+        if items:
+            latest = items[-1]
+            top = self.winfo_toplevel()
+            open_media_tab = getattr(top, "open_media_tab", None)
+            if callable(open_media_tab):
+                self.after(200, lambda: open_media_tab(latest["path"], media_type=latest["type"]))
 
     # ── image clipboard ────────────────────────────────────────────────────
     def _capture_screen(self) -> None:
@@ -424,6 +458,7 @@ class ChatTab(tk.Frame):
 
             elapsed = time.monotonic() - start_time
             self.after(0, lambda: thinking.finish_processing(reply, role_title, elapsed))
+            self.after(0, lambda: self._check_and_auto_open_media(reply, logs if 'logs' in locals() else None))
             self.after(0, lambda: self.status_var.set(f"เสร็จสิ้น ({elapsed:.1f}s)"))
         except Exception as ex:
             err = str(ex)
@@ -480,6 +515,7 @@ class ChatTab(tk.Frame):
 
             elapsed = time.monotonic() - start_time
             self.after(0, lambda: thinking.finish_processing(ans, role_title, elapsed))
+            self.after(0, lambda: self._check_and_auto_open_media(ans, logs if 'logs' in locals() else None))
             self.after(0, lambda: self.status_var.set(f"เสร็จสิ้น ({elapsed:.1f}s)"))
         except Exception as ex:
             err = str(ex)

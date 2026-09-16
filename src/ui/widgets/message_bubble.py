@@ -4,10 +4,12 @@ src/ui/widgets/message_bubble.py — Antigravity-style agentic message bubble wi
 
 import os
 import re
+import subprocess
+import sys
 import time
 import tkinter as tk
-from tkinter import filedialog, ttk
-from typing import Optional, TYPE_CHECKING, Any
+from tkinter import filedialog, messagebox, ttk
+from typing import Optional, TYPE_CHECKING, Any, Callable
 
 try:
     from PIL import Image, ImageTk  # type: ignore[import-untyped]
@@ -15,19 +17,72 @@ try:
 except ImportError:
     _PIL_OK = False
 
-from src.ui.themes import (
-    T,
-    FONT,
-    FONT_BOLD,
-    FONT_TINY,
-    FONT_MONO,
-    FONT_HDR,
-    FONT_H1,
-    FONT_H2,
-    FONT_H3,
-    FONT_CODE_INLINE,
-    FONT_QUOTE,
-)
+try:
+    from ui.themes import (
+        T,
+        FONT,
+        FONT_BOLD,
+        FONT_TINY,
+        FONT_MONO,
+        FONT_HDR,
+        FONT_H1,
+        FONT_H2,
+        FONT_H3,
+        FONT_CODE_INLINE,
+        FONT_QUOTE,
+    )
+except (ImportError, ModuleNotFoundError):
+    from src.ui.themes import (  # type: ignore[no-redef]
+        T,
+        FONT,
+        FONT_BOLD,
+        FONT_TINY,
+        FONT_MONO,
+        FONT_HDR,
+        FONT_H1,
+        FONT_H2,
+        FONT_H3,
+        FONT_CODE_INLINE,
+        FONT_QUOTE,
+    )
+
+
+def extract_media_items(text: str) -> list[dict[str, str]]:
+    """Scan text for generated image or video file paths that exist on disk."""
+    items: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    # Pattern 1: Tool output markers like "บันทึกไว้ที่: <path>"
+    for m in re.finditer(r"บันทึกไว้ที่:\s*([^\n\r]+)", text):
+        raw_p = m.group(1).strip()
+        clean_p = re.split(r"\s+\(", raw_p)[0].strip()
+        # strip quotes if present
+        clean_p = clean_p.strip("\"'")
+        if os.path.exists(clean_p) and clean_p not in seen:
+            seen.add(clean_p)
+            ext = os.path.splitext(clean_p)[1].lower()
+            mtype = "video" if ext in (".mp4", ".webm", ".mkv", ".avi") else "image"
+            items.append({"path": os.path.abspath(clean_p), "type": mtype, "name": os.path.basename(clean_p)})
+
+    # Pattern 2: Markdown image syntax ![...](path)
+    for m in re.finditer(r"!\[.*?\]\((.+?\.(?:png|jpg|jpeg|webp|gif|bmp|mp4))\)", text, re.IGNORECASE):
+        p = m.group(1).strip().strip("\"'")
+        if os.path.exists(p) and p not in seen:
+            seen.add(p)
+            ext = os.path.splitext(p)[1].lower()
+            mtype = "video" if ext == ".mp4" else "image"
+            items.append({"path": os.path.abspath(p), "type": mtype, "name": os.path.basename(p)})
+
+    # Pattern 3: Standard relative or absolute media paths (e.g. images/xyz.png or videos/xyz.mp4)
+    for m in re.finditer(r"(?:[a-zA-Z]:[\\/]|(?:\.\.?[\\/])|[\w\-_]+[\\/])[\w\s\.\-_/\\]+\.(?:png|jpg|jpeg|webp|gif|bmp|mp4)", text, re.IGNORECASE):
+        candidate = m.group(0).strip().rstrip(".,;)\"\'")
+        if os.path.exists(candidate) and candidate not in seen:
+            seen.add(candidate)
+            ext = os.path.splitext(candidate)[1].lower()
+            mtype = "video" if ext == ".mp4" else "image"
+            items.append({"path": os.path.abspath(candidate), "type": mtype, "name": os.path.basename(candidate)})
+
+    return items
 
 
 _FEATHER_ICON_PHOTO = None
@@ -36,7 +91,11 @@ _FEATHER_ICON_PHOTO = None
 def _get_feather_icon() -> Optional[Any]:
     global _FEATHER_ICON_PHOTO
     if _FEATHER_ICON_PHOTO is not None:
-        return _FEATHER_ICON_PHOTO
+        try:
+            _FEATHER_ICON_PHOTO.tk.call("image", "type", _FEATHER_ICON_PHOTO)
+            return _FEATHER_ICON_PHOTO
+        except Exception:
+            _FEATHER_ICON_PHOTO = None
     if not _PIL_OK:
         return None
     try:
@@ -82,7 +141,8 @@ class MessageBubble(tk.Frame):
     def __init__(self, parent: tk.Widget, role: str, content: str,
                  bg_card: str, hdr_color: str,
                  img: Optional["Image.Image"] = None,
-                 is_thinking: bool = False) -> None:
+                 is_thinking: bool = False,
+                 on_open_media: Optional[Callable[[str, str, str], None]] = None) -> None:
         super().__init__(
             parent,
             bg=bg_card,
@@ -96,6 +156,7 @@ class MessageBubble(tk.Frame):
         self._hdr_color = hdr_color
         self._role_raw = role
         self._role_kind = "error" if "Error" in role else ("user" if role.startswith("You") else "ai")
+        self.on_open_media = on_open_media
         self._save_btns: list[tk.Button] = []
         self._thumb_ref = None
         self._steps: list[dict[str, Any]] = []
@@ -104,6 +165,10 @@ class MessageBubble(tk.Frame):
         self._process_expanded = False
         self._spinner_idx = 0
         self._thinking_text = "กำลังคิดและประมวลผล..."
+        self._rendered_media_paths: set[str] = set()
+        self._media_thumbs: list[Any] = []
+        self._media_cards: list[tk.Frame] = []
+        self._media_action_btns: list[tk.Button] = []
         self.pack(fill="x", padx=16, pady=(0, 10))
 
         # Header bar
@@ -114,8 +179,11 @@ class MessageBubble(tk.Frame):
         icon_photo = _get_feather_icon() if (role.startswith("AI") or "🛠" in role) else None
         self._role_icon_lbl = tk.Label(self._hdr_frame, bg=bg_card)
         if icon_photo:
-            self._role_icon_lbl.configure(image=icon_photo)
-            self._role_icon_lbl.pack(side="left", padx=(0, 4))
+            try:
+                self._role_icon_lbl.configure(image=icon_photo)
+                self._role_icon_lbl.pack(side="left", padx=(0, 4))
+            except Exception:
+                icon_photo = None
 
         badge_text = _format_badge_text(role, has_icon=icon_photo is not None)
         self._role_lbl = tk.Label(
@@ -212,6 +280,9 @@ class MessageBubble(tk.Frame):
         self.body.pack(fill="x", expand=True)
         self.body.bind("<Key>", self._guard)
         self._add_save_buttons(content)
+        self._media_container = tk.Frame(self, bg=bg_card)
+        self._media_container.pack(fill="x", pady=(4, 0))
+        self._render_media_previews(content)
         self.after(10, self._fit)
 
     def _configure_tags(self) -> None:
@@ -446,6 +517,7 @@ class MessageBubble(tk.Frame):
         self._elapsed_sec = elapsed_sec
         self.set_role(role)
         self.update_content(final_text)
+        self._render_media_previews(final_text)
 
         if self._steps or elapsed_sec > 0:
             self._process_container.pack(fill="x", pady=(0, 6), before=self.body)
@@ -473,15 +545,172 @@ class MessageBubble(tk.Frame):
         self._apply_markdown_tags(text)
         self.body.configure(state="disabled")
         self._add_save_buttons(text)
+        self._render_media_previews(text)
         self.after(10, self._fit)
+
+    def _render_media_previews(self, text: str) -> None:
+        """Scan text and steps for media outputs and render inline preview cards."""
+        full_text = text
+        for step in self._steps:
+            full_text += "\n" + str(step.get("detail", ""))
+
+        media_items = extract_media_items(full_text)
+        if not media_items:
+            return
+
+        for item in media_items:
+            path = item["path"]
+            if path in self._rendered_media_paths:
+                continue
+            self._rendered_media_paths.add(path)
+            self._create_media_card(item)
+
+    def _trigger_open_media(self, path: str, media_type: str) -> None:
+        """Trigger opening dedicated viewer tab or fallback to system viewer."""
+        if self.on_open_media:
+            prompt_snip = self._content[:100].strip()
+            self.on_open_media(path, media_type, prompt_snip)
+        else:
+            try:
+                if os.name == "nt":
+                    os.startfile(path)
+                elif sys.platform == "darwin":
+                    subprocess.Popen(["open", path])
+                else:
+                    subprocess.Popen(["xdg-open", path])
+            except Exception:
+                pass
+
+    def _create_media_card(self, item: dict[str, str]) -> None:
+        """Render a sleek media preview card inside _media_container."""
+        path = item["path"]
+        mtype = item["type"]
+        name = item["name"]
+
+        card = tk.Frame(
+            self._media_container,
+            bg=T["bg2"],
+            padx=12,
+            pady=10,
+            highlightthickness=1,
+            highlightbackground=T["border"],
+        )
+        card.pack(fill="x", pady=(4, 6))
+        self._media_cards.append(card)
+
+        # Header row
+        hdr_row = tk.Frame(card, bg=T["bg2"])
+        hdr_row.pack(fill="x", pady=(0, 6))
+
+        badge = "🎨 รูปภาพ" if mtype == "image" else "🎬 วิดีโอ"
+        tk.Label(
+            hdr_row,
+            text=f"{badge}: {name}",
+            font=FONT_BOLD,
+            bg=T["bg2"],
+            fg=T["accent"],
+        ).pack(side="left")
+
+        # Action button: Open in New Tab
+        btn_tab = tk.Button(
+            hdr_row,
+            text="🔍 เปิดในแท็บใหม่",
+            font=FONT_TINY,
+            bg=T["bg3"],
+            fg=T["accent"],
+            activebackground=T["bg_btn"],
+            activeforeground=T["accent_hover"],
+            relief="flat",
+            padx=8,
+            pady=2,
+            cursor="hand2",
+            command=lambda p=path, t=mtype: self._trigger_open_media(p, t),
+        )
+        btn_tab.pack(side="right", padx=(4, 0))
+        self._media_action_btns.append(btn_tab)
+
+        # Action button: Folder
+        def _open_folder(p: str = path) -> None:
+            try:
+                if os.name == "nt":
+                    subprocess.Popen(f'explorer /select,"{os.path.abspath(p)}"')
+                elif sys.platform == "darwin":
+                    subprocess.Popen(["open", "-R", p])
+                else:
+                    subprocess.Popen(["xdg-open", os.path.dirname(os.path.abspath(p))])
+            except Exception:
+                pass
+
+        btn_dir = tk.Button(
+            hdr_row,
+            text="📂 โฟลเดอร์",
+            font=FONT_TINY,
+            bg=T["bg3"],
+            fg=T["fg"],
+            activebackground=T["bg_btn"],
+            relief="flat",
+            padx=7,
+            pady=2,
+            cursor="hand2",
+            command=_open_folder,
+        )
+        btn_dir.pack(side="right", padx=2)
+        self._media_action_btns.append(btn_dir)
+
+        # Content area
+        if mtype == "image" and _PIL_OK:
+            try:
+                with Image.open(path) as img_src:
+                    w_orig, h_orig = img_src.size
+                    thumb = img_src.copy()
+                    thumb.thumbnail((340, 220))
+                    photo = ImageTk.PhotoImage(thumb)
+                    self._media_thumbs.append(photo)
+
+                preview_lbl = tk.Label(card, image=photo, bg=T["bg2"], cursor="hand2")
+                preview_lbl.pack(anchor="w", pady=(2, 4))
+                preview_lbl.bind("<Button-1>", lambda _e, p=path, t=mtype: self._trigger_open_media(p, t))
+
+                info_txt = f"ความละเอียด: {w_orig}x{h_orig} px"
+                if os.path.exists(path):
+                    kb = os.path.getsize(path) / 1024
+                    info_txt += f" ({kb:.1f} KB)"
+                tk.Label(card, text=info_txt, font=FONT_TINY, bg=T["bg2"], fg=T["sub"]).pack(anchor="w")
+            except Exception:
+                pass
+        else:
+            vframe = tk.Frame(card, bg=T["bg2"])
+            vframe.pack(fill="x", pady=4)
+            tk.Label(vframe, text="🎬 วิดีโอพร้อมเล่น — คลิกปุ่มด้านล่างเพื่อเปิดเล่นหรือดูในแท็บ", font=FONT, bg=T["bg2"], fg=T["fg"]).pack(side="left")
+
+            btn_play = tk.Button(
+                vframe,
+                text="▶ เล่นวิดีโอ (Default Player)",
+                font=FONT_TINY,
+                bg=T["accent"],
+                fg=T["bg"],
+                activebackground=T["accent_hover"],
+                activeforeground=T["bg"],
+                relief="flat",
+                padx=10,
+                pady=3,
+                cursor="hand2",
+                command=lambda p=path: self._trigger_open_media(p, "video"),
+            )
+            btn_play.pack(side="right", padx=4)
+            self._media_action_btns.append(btn_play)
 
     def set_role(self, role: str) -> None:
         self._role_raw = role
         self._role_kind = "error" if "Error" in role else ("user" if role.startswith("You") else "ai")
         icon_photo = _get_feather_icon() if self._role_kind == "ai" else None
         if icon_photo:
-            self._role_icon_lbl.configure(image=icon_photo, bg=self._bg_card)
-            self._role_icon_lbl.pack(side="left", padx=(0, 4), before=self._role_lbl)
+            try:
+                self._role_icon_lbl.configure(image=icon_photo, bg=self._bg_card)
+                self._role_icon_lbl.pack(side="left", padx=(0, 4), before=self._role_lbl)
+            except Exception:
+                icon_photo = None
+                self._role_icon_lbl.pack_forget()
         else:
             self._role_icon_lbl.pack_forget()
 
@@ -514,6 +743,15 @@ class MessageBubble(tk.Frame):
 
         if hasattr(self, "_img_label"):
             self._img_label.configure(bg=self._bg_card)
+
+        if hasattr(self, "_media_container"):
+            self._media_container.configure(bg=self._bg_card)
+
+        for card in self._media_cards:
+            card.configure(bg=T["bg2"], highlightbackground=T["border"])
+
+        for btn in self._media_action_btns:
+            btn.configure(bg=T["bg3"], fg=T["fg"], activebackground=T["bg_btn"])
 
         for btn in self._save_btns:
             btn.configure(

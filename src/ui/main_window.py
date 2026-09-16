@@ -31,6 +31,7 @@ try:
     from core.updater import check_github_release, is_newer_version, APP_VERSION, UpdateInfo
     from ui.themes import T, DARK, LIGHT, FONT, FONT_TINY, FONT_TITLE, FONT_HDR
     from ui.chat_tab import ChatTab
+    from ui.tabs.media_tab import MediaViewerTab
     from ui.capture.screen_crop import ScreenCropOverlay
     from ui.dialogs.settings_dialog import SettingsDialog
     from ui.dialogs.mcp_dialog import MCPManagerDialog
@@ -43,6 +44,7 @@ except (ImportError, ModuleNotFoundError):
     from src.core.updater import check_github_release, is_newer_version, APP_VERSION, UpdateInfo  # type: ignore[no-redef]
     from src.ui.themes import T, DARK, LIGHT, FONT, FONT_TINY, FONT_TITLE, FONT_HDR  # type: ignore[no-redef]
     from src.ui.chat_tab import ChatTab  # type: ignore[no-redef]
+    from src.ui.tabs.media_tab import MediaViewerTab  # type: ignore[no-redef]
     from src.ui.capture.screen_crop import ScreenCropOverlay  # type: ignore[no-redef]
     from src.ui.dialogs.settings_dialog import SettingsDialog  # type: ignore[no-redef]
     from src.ui.dialogs.mcp_dialog import MCPManagerDialog  # type: ignore[no-redef]
@@ -58,7 +60,7 @@ def _project_name() -> str:
 
 class MaxPlusGUI(tk.Tk):
     _is_dark: bool = True
-    _tabs: list[ChatTab]
+    _tabs: list[Any]
 
     def __init__(self) -> None:
         super().__init__()
@@ -276,29 +278,82 @@ class MaxPlusGUI(tk.Tk):
 
     # ── tabs ───────────────────────────────────────────────────────────────
     def _new_tab(self) -> None:
-        n = len(self._tabs) + 1
+        chat_count = sum(1 for t in self._tabs if isinstance(t, ChatTab)) + 1
         profile = self._active_profile()
-        tab = ChatTab(self.notebook, tab_name=f"Chat {n}", api_key=profile["api_key"],
+        tab = ChatTab(self.notebook, tab_name=f"Chat {chat_count}", api_key=profile["api_key"],
                       base_url=profile["base_url"], model=profile["model"],
                       api_mode=profile["api_mode"])
         self._tabs.append(tab)
-        self.notebook.add(tab, text=f"  Chat {n}  ")
+        self.notebook.add(tab, text=f"  Chat {chat_count}  ")
         self.notebook.select(tab)
+
+    def open_media_tab(
+        self,
+        file_path: str,
+        title: Optional[str] = None,
+        media_type: str = "image",
+        prompt: str = "",
+    ) -> Optional[MediaViewerTab]:
+        """Open a dedicated viewer tab for an image or video."""
+        if not file_path or not os.path.exists(file_path):
+            return None
+
+        norm_path = os.path.abspath(file_path)
+        for t in self._tabs:
+            if isinstance(t, MediaViewerTab) and os.path.abspath(t.file_path) == norm_path:
+                self.notebook.select(t)
+                return t
+
+        def _on_close_media(m_tab: MediaViewerTab) -> None:
+            if m_tab in self._tabs:
+                idx = self._tabs.index(m_tab)
+                self.notebook.forget(idx)
+                self._tabs.remove(m_tab)
+                m_tab.destroy()
+
+        tab = MediaViewerTab(
+            self.notebook,
+            file_path=norm_path,
+            title=title,
+            media_type=media_type,
+            prompt=prompt,
+            on_close=_on_close_media,
+        )
+        self._tabs.append(tab)
+
+        base_name = os.path.basename(norm_path)
+        icon = "🎨" if media_type == "image" else "🎬"
+        tab_label = f" {icon} {base_name[:18]} "
+
+        self.notebook.add(tab, text=tab_label)
+        self.notebook.select(tab)
+        return tab
 
     def _close_tab(self) -> None:
         if len(self._tabs) <= 1:
             return   # เหลืออย่างน้อย 1 แท็บ
-        idx = self.notebook.index("current")
+        try:
+            idx = self.notebook.index("current")
+            closed_tab = self._tabs[idx]
+        except Exception:
+            return
+
         self.notebook.forget(idx)
         self._tabs.pop(idx)
-        # rename remaining
-        for i, t in enumerate(self._tabs):
-            self.notebook.tab(t, text=f"  Chat {i+1}  ")
+        closed_tab.destroy()
+
+        # Rename only remaining ChatTabs to keep numbering consistent
+        chat_idx = 1
+        for t in self._tabs:
+            if isinstance(t, ChatTab):
+                self.notebook.tab(t, text=f"  Chat {chat_idx}  ")
+                chat_idx += 1
 
     def _current_tab(self) -> Optional[ChatTab]:
         try:
             idx = self.notebook.index("current")
-            return self._tabs[idx]
+            t = self._tabs[idx]
+            return t if isinstance(t, ChatTab) else None
         except Exception:
             return None
 
@@ -337,10 +392,11 @@ class MaxPlusGUI(tk.Tk):
         profile = self._active_profile()
         self.api_key = profile["api_key"]
         for tab in self._tabs:
-            tab.ai.api_key = profile["api_key"]
-            tab.ai.base_url = profile["base_url"].rstrip("/")
-            tab.ai.api_mode = profile["api_mode"]
-            tab.ai.model = profile["model"]
+            if isinstance(tab, ChatTab):
+                tab.ai.api_key = profile["api_key"]
+                tab.ai.base_url = profile["base_url"].rstrip("/")
+                tab.ai.api_mode = profile["api_mode"]
+                tab.ai.model = profile["model"]
 
     def _open_settings(self) -> None:
         SettingsDialog(self, self.profiles, self.selected_profile_id,
@@ -546,7 +602,8 @@ class MaxPlusGUI(tk.Tk):
         model = self.model_var.get()
         self._active_profile()["model"] = model
         for t in self._tabs:
-            t.ai.model = model
+            if isinstance(t, ChatTab):
+                t.ai.model = model
 
     def _on_provider_change(self, *_: object) -> None:
         if self._changing_provider:
@@ -562,7 +619,8 @@ class MaxPlusGUI(tk.Tk):
         self._changing_provider = False
         self._apply_active_profile()
         for tab in self._tabs:
-            tab.status_var.set(f"ใช้ {profile['name']} · {profile['model']}")
+            if isinstance(tab, ChatTab):
+                tab.status_var.set(f"ใช้ {profile['name']} · {profile['model']}")
 
     # ── theme ──────────────────────────────────────────────────────────────
     def _toggle_theme(self) -> None:
@@ -594,7 +652,8 @@ class MaxPlusGUI(tk.Tk):
         self._apply_notebook_style(style)
 
         for tab in self._tabs:
-            tab.apply_theme()
+            if hasattr(tab, "apply_theme"):
+                tab.apply_theme()
 
     def _check_update_background(self) -> None:
         """Check for updates in background on startup and show popup if new."""
