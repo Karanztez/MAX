@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any, Optional, Union
-from max_ai.agent import MaxAgent
+try:
+    from ..agent import MaxAgent
+except (ImportError, ModuleNotFoundError):
+    from max_ai.agent import MaxAgent  # type: ignore[no-redef]
 
 
 def split_discord_message(text: str, limit: int = 1900) -> list[str]:

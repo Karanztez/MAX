@@ -18,13 +18,21 @@ Quick Start:
     result = team.run("สร้าง Discord bot")
 """
 
-from __future__ import annotations
+try:
+    from .agent import MaxAgent
+    from .session import MaxSession, Response
+    from .team import MaxTeam, TeamMember
+    from .async_api import ask_async, stream_async
+except (ImportError, ModuleNotFoundError):
+    from max_ai.agent import MaxAgent  # type: ignore[no-redef]
+    from max_ai.session import MaxSession, Response  # type: ignore[no-redef]
+    from max_ai.team import MaxTeam, TeamMember  # type: ignore[no-redef]
+    from max_ai.async_api import ask_async, stream_async  # type: ignore[no-redef]
 
-from max_ai.agent import MaxAgent
-from max_ai.session import MaxSession, Response
-from max_ai.team import MaxTeam, TeamMember
-from max_ai.async_api import ask_async, stream_async
-from src.core.ai_client import AIClient
+try:
+    from core.ai_client import AIClient
+except (ImportError, ModuleNotFoundError):
+    from src.core.ai_client import AIClient  # type: ignore[no-redef]
 
 # Convenient short aliases
 Agent = MaxAgent

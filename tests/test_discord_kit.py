@@ -2,8 +2,15 @@
 tests/test_discord_kit.py — Unit tests for MAX AI Discord Kit helpers.
 """
 
+import sys
 import unittest
-from max_ai.discord.bot import split_discord_message, create_max_bot, MaxDiscordBot
+from pathlib import Path
+
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from max_ai.discord.bot import split_discord_message, create_max_bot, MaxDiscordBot  # type: ignore[import-not-found]
 
 
 class TestDiscordKit(unittest.TestCase):

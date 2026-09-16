@@ -8,8 +8,15 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Callable, Optional, Union
 
-from src.core.screen_manager import ScreenManager, Screen
-from max_ai.agent import MaxAgent
+try:
+    from core.screen_manager import ScreenManager, Screen
+except (ImportError, ModuleNotFoundError):
+    from src.core.screen_manager import ScreenManager, Screen  # type: ignore[no-redef]
+
+try:
+    from .agent import MaxAgent
+except (ImportError, ModuleNotFoundError):
+    from max_ai.agent import MaxAgent  # type: ignore[no-redef]
 
 
 class TeamMember:

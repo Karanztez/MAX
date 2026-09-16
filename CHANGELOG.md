@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Isolated screen state holding role, custom model, profile ID, system prompt, and message history per screen.
 - **CLI Virtual Screen Navigation (`/screen`, `/screens`)**:
   - `/screens` or `/screen list`: Beautiful ASCII table of all screens, roles, models, pipeline links, and message counts.
-  - `/screen 1`, `/screen 2`, `/screen 3`: Instant screen switching with dynamic prompt indicator (e.g. `[1:Planner] You: `) and recent message summary.
+  - `/screen 1`, `/screen 2`, `/screen 3`: Instant screen switching with dynamic prompt indicator (e.g. `[1:Planner] You:`) and recent message summary.
   - `/screen create <name> [role] [model]`: Create new screens with auto-assigned IDs.
   - `/screen link <from_id> <to_id>`: Link screens together into an automated data pipeline.
   - `/screen unlink <id>` / `/screen close <id>`: Unlink or close screens.

@@ -8,12 +8,23 @@ from __future__ import annotations
 import asyncio
 from typing import Any, AsyncIterator, Callable, Iterator, Optional, Union
 
-from src.core.ai_client import AIClient
-from src.core.provider_profiles import default_profiles
-from src.core.settings_store import SettingsStore
-from src.core.mcp_manager import MCPManager
-from src.core.skill_manager import SkillManager
-from max_ai.session import MaxSession, Response
+try:
+    from core.ai_client import AIClient
+    from core.provider_profiles import default_profiles
+    from core.settings_store import SettingsStore
+    from core.mcp_manager import MCPManager
+    from core.skill_manager import SkillManager
+except (ImportError, ModuleNotFoundError):
+    from src.core.ai_client import AIClient  # type: ignore[no-redef]
+    from src.core.provider_profiles import default_profiles  # type: ignore[no-redef]
+    from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
+    from src.core.mcp_manager import MCPManager  # type: ignore[no-redef]
+    from src.core.skill_manager import SkillManager  # type: ignore[no-redef]
+
+try:
+    from .session import MaxSession, Response
+except (ImportError, ModuleNotFoundError):
+    from max_ai.session import MaxSession, Response  # type: ignore[no-redef]
 
 
 class MaxAgent:

@@ -9,7 +9,10 @@ import asyncio
 from typing import Any, AsyncIterator, Callable, Iterator, Optional, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from max_ai.agent import MaxAgent
+    try:
+        from .agent import MaxAgent
+    except (ImportError, ModuleNotFoundError):
+        from max_ai.agent import MaxAgent  # type: ignore[no-redef]
 
 
 class Response:

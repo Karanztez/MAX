@@ -3,11 +3,17 @@ tests/test_sdk_api.py — Comprehensive Unit Tests for MAX AI Python SDK & Publi
 """
 
 import asyncio
+import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-import max_ai
-from max_ai import MaxAgent, MaxSession, MaxTeam, Agent, Session, Team
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+import max_ai  # type: ignore[import-not-found]
+from max_ai import MaxAgent, MaxSession, MaxTeam, Agent, Session, Team  # type: ignore[import-not-found]
 
 
 class TestMaxAISDK(unittest.TestCase):
