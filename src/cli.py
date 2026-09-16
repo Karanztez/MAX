@@ -23,6 +23,7 @@ try:
     from core.ai_client import AIClient
     from core.mcp_manager import MCPManager, set_web_permission_handler
     from core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile
+    from core.screen_manager import Screen, ScreenManager
     from core.settings_store import SettingsStore
     from core.skill_manager import SkillManager
     from core.updater import (
@@ -37,6 +38,7 @@ except (ImportError, ModuleNotFoundError):
     from src.core.ai_client import AIClient  # type: ignore[no-redef]
     from src.core.mcp_manager import MCPManager, set_web_permission_handler  # type: ignore[no-redef]
     from src.core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile  # type: ignore[no-redef]
+    from src.core.screen_manager import Screen, ScreenManager  # type: ignore[no-redef]
     from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
     from src.core.skill_manager import SkillManager  # type: ignore[no-redef]
     from src.core.updater import (  # type: ignore[no-redef]
@@ -93,8 +95,22 @@ class MaxTerminalApp:
         set_web_permission_handler(self._handle_web_permission)
         self.is_first_run = not self.settings_store.has_saved_key()
         self.profiles, self.selected_profile_id = self.settings_store.load_provider_settings(default_profiles())
-        self.history: list[dict[str, Any]] = []
         self.active_profile = self._get_active_profile()
+
+        # Initialize MAX Virtual Screen & Pipeline Manager
+        self.screen_manager = ScreenManager()
+        self.screen_manager.active_screen.model = self.active_profile.get("model", "")
+        try:
+            from core.mcp.builtins.workspace_tools import set_screen_manager
+            set_screen_manager(self.screen_manager)
+        except Exception:
+            try:
+                from src.core.mcp.builtins.workspace_tools import set_screen_manager
+                set_screen_manager(self.screen_manager)
+            except Exception:
+                pass
+
+        self.history: list[dict[str, Any]] = self.screen_manager.active_screen.history
 
     def _handle_web_permission(self, domain: str, url: str, action: str) -> bool:
         """Interactive prompt in CLI to grant, deny, or whitelist web access."""
@@ -165,15 +181,166 @@ class MaxTerminalApp:
 
         return True
 
-    def _create_client(self) -> AIClient:
+    def _create_client(self, model: str = "", profile_id: str = "") -> AIClient:
         p = self.active_profile
+        if profile_id:
+            for prof in self.profiles:
+                if prof["id"] == profile_id:
+                    p = prof
+                    break
+        chosen_model = model or p.get("model", "")
         return AIClient(
             api_key=p.get("api_key", ""),
             base_url=p.get("base_url", ""),
-            model=p.get("model", ""),
+            model=chosen_model,
             api_mode=p.get("api_mode", "chat_completions"),
             timeout=60,
         )
+
+    def _print_screens_table(self) -> None:
+        """Display formatted table of virtual screens and links."""
+        screens = self.screen_manager.list_screens()
+        active_id = self.screen_manager.active_id
+
+        safe_print(color("\n╔═══════════════════════════════════════════════════════════════════════════════╗", Colors.CYAN))
+        safe_print(color("║                   🖥️  MAX VIRTUAL SCREENS & TEAM PIPELINE                     ║", Colors.BOLD + Colors.CYAN))
+        safe_print(color("╠════╦══════════════╦════════════╦══════════════════════════════╦════════╦══════╣", Colors.CYAN))
+        safe_print(color("║ ID ║ NAME         ║ ROLE       ║ MODEL                        ║ LINKED ║ MSGS ║", Colors.BOLD + Colors.CYAN))
+        safe_print(color("╠════╬══════════════╬════════════╬══════════════════════════════╬════════╬══════╣", Colors.CYAN))
+
+        for s in screens:
+            is_active = (s.id == active_id)
+            id_str = f"{s.id}*" if is_active else f"{s.id} "
+            name_str = (s.name[:12] + "..") if len(s.name) > 12 else s.name.ljust(12)
+            role_str = (s.role[:10]) if len(s.role) <= 10 else (s.role[:8] + "..")
+            role_str = role_str.ljust(10)
+            model_disp = s.model or self.active_profile.get("model", "default")
+            model_str = (model_disp[:26] + "..") if len(model_disp) > 28 else model_disp.ljust(28)
+            link_str = f"-> {s.linked_to}".ljust(6) if s.linked_to else " -    "
+            msgs_str = str(len(s.history)).rjust(4)
+
+            row = f"║ {id_str:<2} ║ {name_str} ║ {role_str} ║ {model_str} ║ {link_str} ║ {msgs_str} ║"
+            if is_active:
+                safe_print(color(row, Colors.BOLD + Colors.GREEN))
+            else:
+                safe_print(row)
+
+        safe_print(color("╚════╩══════════════╩════════════╩══════════════════════════════╩════════╩══════╝", Colors.CYAN))
+        safe_print(color(f"  * หน้าจอที่กำลังทำงานอยู่ (Active Screen: {active_id})", Colors.DIM))
+        safe_print(f"""
+{color('คำสั่ง MAX Screen & Team:', Colors.BOLD)}
+  {color('/screen <id>', Colors.CYAN)} (เช่น {color('/screen 1', Colors.YELLOW)}, {color('/screen 2', Colors.YELLOW)}) - สลับไปดูหรือแชทในหน้าจอนั้นทันที
+  {color('/screen create <name> [role] [model]', Colors.CYAN)} - สร้าง Screen ใหม่โดยระบบจะรัน ID 1, 2, 3, 4 ให้อัตโนมัติ
+  {color('/screen link <from_id> <to_id>', Colors.CYAN)}       - เชื่อมโยงส่งต่อผลลัพธ์ระหว่างหน้าจอ (เช่น link 1 2)
+  {color('/screen unlink <id>', Colors.CYAN)}                  - ยกเลิกการเชื่อมโยง
+  {color('/screen close <id>', Colors.CYAN)}                   - ปิด/ลบหน้าจอ
+  {color('/team init', Colors.CYAN)}                           - สร้างทีมอัตโนมัติ (1: Planner -> 2: Coder -> 3: Reviewer)
+  {color('/team run <โจทย์>', Colors.CYAN)}                    - รันการทำงานแบบทีมอัตโนมัติส่งต่อข้อมูลตามสาย Screen Link
+""")
+
+    def _show_screen_summary(self, s: Screen) -> None:
+        """Display metadata and recent history of a screen."""
+        safe_print(color(f"\n🖥️  [MAX Screen {s.id}] {s.name}", Colors.BOLD + Colors.GREEN))
+        safe_print(f"• บทบาท (Role): {color(s.role, Colors.CYAN)}")
+        model_str = s.model or self.active_profile.get("model", "default")
+        safe_print(f"• โมเดล (Model): {color(model_str, Colors.YELLOW)}")
+        link_target = f"Screen {s.linked_to}" if s.linked_to else "ไม่มี (สิ้นสุดกระบวนการ)"
+        safe_print(f"• ส่งต่อไปยัง (Linked to): {color(link_target, Colors.BLUE)}")
+        safe_print(f"• ประวัติข้อความ: {len(s.history)} ข้อความ")
+
+        if s.history:
+            safe_print(color("\n--- ข้อความล่าสุดในหน้านี้ ---", Colors.DIM))
+            for m in s.history[-3:]:
+                sender = color("You", Colors.CYAN) if m.get("role") == "user" else color(s.name, Colors.GREEN)
+                content = m.get("content", "")
+                if len(content) > 180:
+                    content = content[:180] + "..."
+                safe_print(f"[{sender}]: {content}")
+            safe_print(color("---------------------------", Colors.DIM))
+
+    def _run_team_pipeline(self, user_task: str) -> None:
+        """Execute collaborative multi-agent linked screen workflow sequentially."""
+        screens = self.screen_manager.list_screens()
+        if not screens:
+            safe_print(color("❌ ไม่พบหน้าจอใดๆ ในระบบ กรุณารัน /team init ก่อน", Colors.RED))
+            return
+
+        # Start from screen "1" if available, else first screen
+        cur = self.screen_manager.get_screen("1") or screens[0]
+        step = 1
+        previous_output = ""
+
+        safe_print(color(f"\n🚀 เริ่มต้นรัน Multi-Agent Team Pipeline", Colors.BOLD + Colors.GREEN))
+        safe_print(f"📌 หัวข้อโจทย์: {color(user_task, Colors.BOLD + Colors.YELLOW)}\n")
+
+        visited: set[str] = set()
+        while cur and cur.id not in visited:
+            visited.add(cur.id)
+            safe_print(color(f"{'═'*65}", Colors.CYAN))
+            safe_print(color(f"  Step {step}: [Screen {cur.id}] {cur.name} ({cur.role})", Colors.BOLD + Colors.YELLOW))
+            if cur.linked_to:
+                safe_print(color(f"  🔗 เชื่อมต่อไปยัง -> Screen {cur.linked_to}", Colors.DIM))
+            safe_print(color(f"{'═'*65}", Colors.CYAN))
+
+            # Prepare prompt for this role
+            if step == 1 or not previous_output:
+                prompt_for_agent = user_task
+            else:
+                prompt_for_agent = (
+                    f"โจทย์ของผู้ใช้:\n{user_task}\n\n"
+                    f"ผลลัพธ์จากขั้นตอนก่อนหน้า (ส่งต่อมาจาก Screen ที่เชื่อมโยง):\n"
+                    f"{previous_output}\n\n"
+                    f"กรุณาดำเนินการตามหน้าที่ของคุณ ({cur.role} - {cur.name}) ให้สมบูรณ์และถูกต้อง:"
+                )
+
+            # Build temporary agent history with system prompt
+            temp_history: list[dict[str, Any]] = []
+            if cur.system_prompt:
+                temp_history.append({"role": "system", "content": cur.system_prompt})
+
+            client = self._create_client(model=cur.model, profile_id=cur.profile_id)
+
+            safe_print(f"\n{color(cur.name, Colors.BOLD + Colors.GREEN)}: ", end="", flush=True)
+            output_chunks: list[str] = []
+
+            def on_chunk(token: str) -> None:
+                output_chunks.append(token)
+                try:
+                    sys.stdout.write(token)
+                    sys.stdout.flush()
+                except UnicodeEncodeError:
+                    enc = getattr(sys.stdout, "encoding", "utf-8") or "utf-8"
+                    sys.stdout.write(token.encode(enc, errors="replace").decode(enc))
+                    sys.stdout.flush()
+
+            start_t = time.monotonic()
+            try:
+                temp_history = client.stream_chat(prompt_for_agent, temp_history, on_chunk=on_chunk)
+                cur_output = "".join(output_chunks).strip()
+                if not cur_output and temp_history:
+                    cur_output = temp_history[-1].get("content", "")
+            except Exception as ex:
+                safe_print(color(f"\n❌ เกิดข้อผิดพลาดในการรัน [{cur.name}]: {ex}", Colors.RED))
+                break
+
+            elapsed = time.monotonic() - start_t
+            safe_print(color(f"\n\n[Screen {cur.id} ทำงานเสร็จสิ้นใน {elapsed:.2f}s]", Colors.DIM))
+
+            # Store in screen's permanent history
+            cur.history.append({"role": "user", "content": prompt_for_agent})
+            cur.history.append({"role": "assistant", "content": cur_output})
+
+            previous_output = cur_output
+            step += 1
+
+            # Follow pipeline link
+            if cur.linked_to and cur.linked_to in self.screen_manager.screens:
+                cur = self.screen_manager.screens[cur.linked_to]
+            else:
+                break
+
+        safe_print(color(f"\n✨ เสร็จสิ้นกระบวนการ Team Pipeline ทั้งหมดเรียบร้อยแล้ว!", Colors.BOLD + Colors.GREEN))
+        safe_print(color(f"คุณสามารถพิมพ์ /screen 1, /screen 2, /screen 3 เพื่อตรวจดูข้อมูลแยกแต่ละ Screen ได้\n", Colors.CYAN))
 
     def interactive_setup(self, is_first_time: bool = False) -> None:
         """Numbered 1-2-3-4 interactive setup for Provider, Model, Base URL, and API Key."""
@@ -539,7 +706,115 @@ class MaxTerminalApp:
                 safe_print(color(f"\n{res}", Colors.CYAN))
                 return True
 
-        elif action in {"/teamai", "/team"}:
+        elif action in {"/screens", "/screen"}:
+            sub = parts[1].strip() if len(parts) > 1 else "list"
+            # Support directly switching by typing "/screen 1", "/screen 2", etc.
+            if sub.isdigit() or (self.screen_manager.get_screen(sub) is not None):
+                target_id = sub
+                if self.screen_manager.switch_screen(target_id):
+                    self.history = self.screen_manager.active_screen.history
+                    scr = self.screen_manager.active_screen
+                    safe_print(color(f"✅ สลับไปยัง Screen {scr.id} ({scr.name}) เรียบร้อยแล้ว", Colors.GREEN + Colors.BOLD))
+                    self._show_screen_summary(scr)
+                else:
+                    safe_print(color(f"❌ ไม่พบ Screen ID: {target_id}", Colors.RED))
+                return True
+
+            sub_lower = sub.lower()
+            if sub_lower in {"list", "ls", "all"}:
+                self._print_screens_table()
+                return True
+
+            elif sub_lower in {"switch", "goto", "view", "select"} and len(parts) > 2:
+                target_id = parts[2].strip()
+                if self.screen_manager.switch_screen(target_id):
+                    self.history = self.screen_manager.active_screen.history
+                    scr = self.screen_manager.active_screen
+                    safe_print(color(f"✅ สลับไปยัง Screen {scr.id} ({scr.name}) เรียบร้อยแล้ว", Colors.GREEN + Colors.BOLD))
+                    self._show_screen_summary(scr)
+                else:
+                    safe_print(color(f"❌ ไม่พบ Screen ID: {target_id}", Colors.RED))
+                return True
+
+            elif sub_lower in {"create", "new", "add"} and len(parts) > 2:
+                name = parts[2].strip()
+                role = parts[3].strip() if len(parts) > 3 else "general"
+                model = parts[4].strip() if len(parts) > 4 else self.active_profile.get("model", "")
+                scr = self.screen_manager.create_screen(name=name, role=role, model=model)
+                safe_print(color(f"✅ สร้าง Screen {scr.id} [{scr.name}] สำเร็จ (Role: {scr.role}, Model: {scr.model or 'default'})", Colors.GREEN))
+                self._print_screens_table()
+                return True
+
+            elif sub_lower in {"link"} and len(parts) > 3:
+                fid = parts[2].strip()
+                tid = parts[3].strip()
+                if self.screen_manager.link_screens(fid, tid):
+                    safe_print(color(f"🔗 เชื่อมโยงสำเร็จ: Screen {fid} -> Screen {tid}", Colors.GREEN))
+                else:
+                    safe_print(color(f"❌ ไม่สามารถเชื่อมโยง Screen {fid} ไปยัง {tid} ได้ (ตรวจสอบว่ามี ID อยู่จริงและไม่ซ้ำกัน)", Colors.RED))
+                return True
+
+            elif sub_lower in {"unlink"} and len(parts) > 2:
+                target_id = parts[2].strip()
+                if self.screen_manager.unlink_screen(target_id):
+                    safe_print(color(f"✅ ยกเลิกการเชื่อมโยง Screen {target_id} เรียบร้อยแล้ว", Colors.GREEN))
+                else:
+                    safe_print(color(f"❌ ไม่พบ Screen ID: {target_id}", Colors.RED))
+                return True
+
+            elif sub_lower in {"close", "remove", "delete", "rm"} and len(parts) > 2:
+                target_id = parts[2].strip()
+                if self.screen_manager.remove_screen(target_id):
+                    self.history = self.screen_manager.active_screen.history
+                    safe_print(color(f"🗑️ ลบ Screen {target_id} เรียบร้อยแล้ว", Colors.GREEN))
+                    self._print_screens_table()
+                else:
+                    safe_print(color(f"❌ ไม่สามารถลบ Screen {target_id} ได้ (อาจเป็นหน้าจอสุดท้ายหรือไม่มี ID นี้)", Colors.RED))
+                return True
+
+            else:
+                self._print_screens_table()
+                return True
+
+        elif action == "/team":
+            sub = parts[1].lower() if len(parts) > 1 else "status"
+            extra = " ".join(parts[2:]).strip() if len(parts) > 2 else ""
+
+            if sub in {"init", "setup", "create"}:
+                safe_print(color("🤖 กำลังสร้างระบบ Multi-Agent Team Linked Screens (1: Planner -> 2: Coder -> 3: Reviewer)...", Colors.YELLOW))
+                self.screen_manager.setup_team_screens(default_model=self.active_profile.get("model", ""))
+                self.history = self.screen_manager.active_screen.history
+                safe_print(color("✅ สร้างทีมและเชื่อมโยงท่อข้อมูลสำเร็จ!", Colors.GREEN + Colors.BOLD))
+                self._print_screens_table()
+                return True
+
+            elif sub in {"run", "exec", "start"}:
+                if not extra:
+                    user_task = input(color("\nกรุณากรอกโจทย์สำหรับทีม AI: ", Colors.BOLD + Colors.CYAN)).strip()
+                else:
+                    user_task = extra
+                if user_task:
+                    self._run_team_pipeline(user_task)
+                return True
+
+            elif sub in {"status", "info"}:
+                self._print_screens_table()
+                return True
+
+            elif sub in {"help", "-h", "--help"}:
+                safe_print(f"""
+{color('คำสั่งจัดการ MAX Multi-Agent Team:', Colors.BOLD)}
+  {color('/team init', Colors.CYAN)}               - สร้างทีมอัตโนมัติ (Screen 1: Planner -> 2: Coder -> 3: Reviewer)
+  {color('/team run <โจทย์>', Colors.CYAN)}         - รันกระบวนการทีมต่อเนื่องตาม Screen Links พร้อมสตรีมมิ่งสด
+  {color('/team status', Colors.CYAN)}             - ดูสถานะและโครงสร้างทีมปัจจุบัน
+  {color('/screen <id>', Colors.CYAN)}             - สลับไปดูประวัติและผลลัพธ์ของแต่ละ Agent ในทีม (เช่น /screen 1, /screen 2)
+""")
+                return True
+            else:
+                self._print_screens_table()
+                return True
+
+        elif action == "/teamai":
             sub = parts[1].lower() if len(parts) > 1 else "status"
             extra = " ".join(parts[2:]).strip() if len(parts) > 2 else ""
 
@@ -563,6 +838,8 @@ class MaxTerminalApp:
             safe_print(f"""
 {color("คำสั่งที่ใช้งานได้ (Terminal Commands):", Colors.BOLD)}
   {color('/setup', Colors.CYAN)}                  - ตัวช่วยเลือกผู้ให้บริการ & โมเดล (โหมด 1-2-3-4)
+  {color('/screen [id|list|link]', Colors.CYAN)}   - ดูรายชื่อสกรีนและสลับสกรีน (เช่น /screen 1, /screen 2, /screen list)
+  {color('/team [init|run|status]', Colors.CYAN)} - ระบบทีม Multi-Agent เชื่อมโยงท่อข้อมูลแบบอัตโนมัติ
   {color('/security', Colors.CYAN)}               - ตรวจสอบ/จัดการสิทธิ์การเข้าถึงเว็บไซต์ (Web Security)
   {color('/teamai [pull|push|status]', Colors.CYAN)} - ซิงค์และแชร์ Skills/Rules ร่วมกับทีม (TeamAI)
   {color('/skills', Colors.CYAN)}                 - แสดงรายการ ทักษะ (Skills) ที่ติดตั้งอยู่ในระบบ
@@ -720,7 +997,9 @@ class MaxTerminalApp:
 
         while True:
             try:
-                prompt_label = f"\n{color('You', Colors.BOLD + Colors.CYAN)}: "
+                cur_screen = self.screen_manager.active_screen
+                self.history = cur_screen.history
+                prompt_label = f"\n{color(f'[{cur_screen.id}:{cur_screen.name}]', Colors.BOLD + Colors.GREEN)} {color('You', Colors.BOLD + Colors.CYAN)}: "
                 user_input = input(prompt_label).strip()
                 if not user_input:
                     continue
@@ -732,11 +1011,12 @@ class MaxTerminalApp:
                 # Ensure API credentials exist before sending request
                 self._ensure_credentials()
 
-                # Run conversation
-                client = self._create_client()
+                # Run conversation using active screen model/profile if defined
+                client = self._create_client(model=cur_screen.model, profile_id=cur_screen.profile_id)
                 tools = self.mcp_manager.get_openai_tools() if (self.mcp_manager.enabled and client.api_mode != "responses") else None
 
-                safe_print(f"\n{color('AI', Colors.BOLD + Colors.GREEN)}: ", end="", flush=True)
+                ai_name = cur_screen.name if cur_screen.role != "general" else "AI"
+                safe_print(f"\n{color(ai_name, Colors.BOLD + Colors.GREEN)}: ", end="", flush=True)
 
                 if tools:
                     def on_status(text: str) -> None:
@@ -748,6 +1028,7 @@ class MaxTerminalApp:
                         tool_executor=self.mcp_manager.execute_tool, on_status=on_status
                     )
                     reply = self.history[-1]["content"]
+                    cur_screen.history = self.history
                     elapsed = time.monotonic() - start_time
                     safe_print(f"\n{reply}")
                     safe_print(color(f"\n[เสร็จสิ้นใน {elapsed:.2f}s]", Colors.DIM))
@@ -763,6 +1044,7 @@ class MaxTerminalApp:
                             sys.stdout.flush()
 
                     self.history = client.stream_chat(user_input, self.history, on_chunk=on_chunk)
+                    cur_screen.history = self.history
                     elapsed = time.monotonic() - start_time
                     safe_print(color(f"\n\n[เสร็จสิ้นใน {elapsed:.2f}s]", Colors.DIM))
 

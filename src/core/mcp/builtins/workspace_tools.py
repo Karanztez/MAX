@@ -38,8 +38,77 @@ def _builtin_create_team_room(args: dict[str, Any]) -> str:
     return _workspace_ui_dispatcher("create_team_room", args)
 
 
+try:
+    from ...screen_manager import ScreenManager
+except (ImportError, ModuleNotFoundError):
+    from src.core.screen_manager import ScreenManager  # type: ignore[no-redef]
+
+_global_screen_manager: Optional[ScreenManager] = None
+
+
+def get_screen_manager() -> ScreenManager:
+    global _global_screen_manager
+    if _global_screen_manager is None:
+        _global_screen_manager = ScreenManager()
+    return _global_screen_manager
+
+
+def set_screen_manager(mgr: ScreenManager) -> None:
+    global _global_screen_manager
+    _global_screen_manager = mgr
+
+
+def _builtin_list_screens(_args: dict[str, Any]) -> str:
+    mgr = get_screen_manager()
+    screens = mgr.list_screens()
+    lines = [f"🖥️ รายการ MAX Screens ({len(screens)} หน้าจอ):"]
+    lines.append(f"{'ID':<4} {'Name':<16} {'Role':<12} {'Model':<20} {'Linked To':<10} {'Msgs'}")
+    lines.append("-" * 70)
+    for s in screens:
+        active_mark = "*" if s.id == mgr.active_id else " "
+        link_str = f"Screen {s.linked_to}" if s.linked_to else "-"
+        m_str = s.model or "default"
+        lines.append(f"{s.id + active_mark:<4} {s.name:<16} {s.role:<12} {m_str[:18]:<20} {link_str:<10} {len(s.history)}")
+    return "\n".join(lines)
+
+
+def _builtin_create_screen(args: dict[str, Any]) -> str:
+    name = str(args.get("name") or "New Screen")
+    role = str(args.get("role") or "general")
+    model = str(args.get("model") or "")
+    link_to = str(args.get("link_to") or "") or None
+    mgr = get_screen_manager()
+    s = mgr.create_screen(name=name, role=role, model=model, linked_to=link_to)
+    return f"สร้าง Screen {s.id}: '{s.name}' ({s.role}) สำเร็จ"
+
+
+def _builtin_switch_screen(args: dict[str, Any]) -> str:
+    sid = str(args.get("screen_id") or "")
+    mgr = get_screen_manager()
+    if mgr.switch_screen(sid):
+        s = mgr.active_screen
+        return f"สลับไปยัง Screen {s.id}: '{s.name}' สำเร็จ"
+    return f"ไม่พบ Screen ID: {sid}"
+
+
+def _builtin_link_screens(args: dict[str, Any]) -> str:
+    fid = str(args.get("from_screen_id") or args.get("from_id") or "")
+    tid = str(args.get("to_screen_id") or args.get("to_id") or "")
+    mgr = get_screen_manager()
+    if mgr.link_screens(fid, tid):
+        return f"เชื่อมโยง Screen {fid} ➔ Screen {tid} สำเร็จ"
+    return f"ไม่สามารถเชื่อมโยง Screen {fid} กับ {tid} ได้"
+
+
+# Aliases for convenience
+_builtin_screen_list = _builtin_list_screens
+_builtin_screen_create = _builtin_create_screen
+_builtin_screen_switch = _builtin_switch_screen
+_builtin_screen_link = _builtin_link_screens
+
+
 def get_workspace_tools() -> dict[str, tuple[MCPTool, Any]]:
-    """Return MCP tools for workspace tab and team management."""
+    """Return MCP tools for workspace tab, team, and screen management."""
     return {
         "create_chat_tab": (
             MCPTool(
@@ -102,4 +171,62 @@ def get_workspace_tools() -> dict[str, tuple[MCPTool, Any]]:
             ),
             lambda args: _builtin_create_team_room(args),
         ),
+        "screen_list": (
+            MCPTool(
+                name="screen_list",
+                description="ดูรายการ MAX Virtual Screens ทั้งหมด (1, 2, 3...) และสถานะการเชื่อมต่อ (Link Screen)",
+                input_schema={
+                    "type": "object",
+                    "properties": {},
+                },
+            ),
+            lambda args: _builtin_list_screens(args),
+        ),
+        "screen_create": (
+            MCPTool(
+                name="screen_create",
+                description="สร้าง Screen ใหม่ด้วยตนเอง พร้อมกำหนดชื่อ บทบาท และลิงก์ไปยัง Screen อื่น",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "ชื่อ Screen เช่น 'Tester', 'DevOps'"},
+                        "role": {"type": "string", "description": "บทบาทหน้าที่", "default": "general"},
+                        "model": {"type": "string", "description": "โมเดลที่ต้องการใช้", "default": ""},
+                        "link_to": {"type": "string", "description": "ID ของ Screen ถัดไปที่ต้องการส่งต่อข้อมูลไปหา", "default": ""},
+                    },
+                    "required": ["name"],
+                },
+            ),
+            lambda args: _builtin_create_screen(args),
+        ),
+        "screen_switch": (
+            MCPTool(
+                name="screen_switch",
+                description="สลับไปยัง Screen ที่ระบุด้วย ID (เช่น '1', '2', '3')",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "screen_id": {"type": "string", "description": "ID ของ Screen ที่ต้องการสลับไป เช่น '1', '2'"},
+                    },
+                    "required": ["screen_id"],
+                },
+            ),
+            lambda args: _builtin_switch_screen(args),
+        ),
+        "screen_link": (
+            MCPTool(
+                name="screen_link",
+                description="เชื่อมโยง (Link) หน้าจอสองหน้าจอเข้าด้วยกัน เพื่อให้ Screen แรกส่งต่อ Output ไปยัง Screen ถัดไป",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "from_screen_id": {"type": "string", "description": "ID ของ Screen ต้นทาง เช่น '1'"},
+                        "to_screen_id": {"type": "string", "description": "ID ของ Screen ปลายทาง เช่น '2'"},
+                    },
+                    "required": ["from_screen_id", "to_screen_id"],
+                },
+            ),
+            lambda args: _builtin_link_screens(args),
+        ),
     }
+
