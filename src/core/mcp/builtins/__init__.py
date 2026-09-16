@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from .diagnostic_tools import get_diagnostic_tools
 from .file_tools import get_file_tools
 from .git_tools import get_git_tools
 from .media_tools import get_media_tools
@@ -25,4 +26,5 @@ def get_all_builtin_tools() -> dict[str, tuple[Any, Any]]:
     tools.update(get_skill_tools())
     tools.update(get_teamai_tools())
     tools.update(get_workspace_tools())
+    tools.update(get_diagnostic_tools())
     return tools

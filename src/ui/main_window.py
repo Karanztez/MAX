@@ -34,6 +34,7 @@ try:
     from ui.themes import T, DARK, LIGHT, FONT, FONT_TINY, FONT_TITLE, FONT_HDR
     from ui.chat_tab import ChatTab
     from ui.tabs.media_tab import MediaViewerTab
+    from ui.tabs.draft_tab import DraftReviewTab
     from ui.tabs.team_room_tab import AgentTeamTab
     from ui.capture.screen_crop import ScreenCropOverlay
     from ui.dialogs.settings_dialog import SettingsDialog
@@ -49,6 +50,7 @@ except (ImportError, ModuleNotFoundError):
     from src.ui.themes import T, DARK, LIGHT, FONT, FONT_TINY, FONT_TITLE, FONT_HDR  # type: ignore[no-redef]
     from src.ui.chat_tab import ChatTab  # type: ignore[no-redef]
     from src.ui.tabs.media_tab import MediaViewerTab  # type: ignore[no-redef]
+    from src.ui.tabs.draft_tab import DraftReviewTab  # type: ignore[no-redef]
     from src.ui.tabs.team_room_tab import AgentTeamTab  # type: ignore[no-redef]
     from src.ui.capture.screen_crop import ScreenCropOverlay  # type: ignore[no-redef]
     from src.ui.dialogs.settings_dialog import SettingsDialog  # type: ignore[no-redef]
@@ -179,6 +181,9 @@ class MaxPlusGUI(tk.Tk):
             self.mcp_manager.set_workspace_root(self.project_path)
             self.title(f"MAX for AI v{APP_VERSION}")
             self._proj_btn.configure(text=f"📁 {self.project_name}")
+            for t in self._tabs:
+                if isinstance(t, DraftReviewTab):
+                    t.set_workspace_path(self.project_path)
             tab = self._current_tab()
             if tab is not None:
                 tab.status_var.set(f"สลับโปรเจกต์: {self.project_name} ({self.project_path})")
@@ -234,6 +239,14 @@ class MaxPlusGUI(tk.Tk):
             command=self._new_team_room_tab, cursor="hand2"
         )
         self._team_btn.pack(side="left")
+
+        self._draft_btn = tk.Button(
+            self._toolbar_left, text="📝 Drafts",
+            bg=T["bg2"], fg=T["accent"], activebackground=T["bg3"], activeforeground=T["accent_hover"],
+            font=FONT_TINY, relief="flat", padx=8, pady=2,
+            command=self._open_draft_tab, cursor="hand2"
+        )
+        self._draft_btn.pack(side="left", padx=(4, 0))
 
         # Right: Provider & Model Comboboxes + Action buttons
         self._toolbar_right = tk.Frame(self._toolbar, bg=T["bg"])
@@ -481,6 +494,42 @@ class MaxPlusGUI(tk.Tk):
         tab_label = f" {icon} {base_name[:18]} "
 
         self.notebook.add(tab, text=tab_label)
+        self.notebook.select(tab)
+        return tab
+
+    def _open_draft_tab(self) -> DraftReviewTab:
+        """Open or focus the dedicated Drafts & Review tab."""
+        for t in self._tabs:
+            if isinstance(t, DraftReviewTab):
+                self.notebook.select(t)
+                t._refresh_drafts_list()
+                return t
+
+        def _on_close_draft(d_tab: DraftReviewTab) -> None:
+            if d_tab in self._tabs:
+                idx = self._tabs.index(d_tab)
+                self.notebook.forget(idx)
+                self._tabs.remove(d_tab)
+                d_tab.destroy()
+
+        def _on_send_to_ai(prompt: str) -> None:
+            chat_tabs = [t for t in self._tabs if isinstance(t, ChatTab)]
+            if chat_tabs:
+                target_chat = self._current_tab() or chat_tabs[0]
+                self.notebook.select(target_chat)
+                target_chat.entry.delete("1.0", "end")
+                target_chat.entry.insert("1.0", prompt)
+                target_chat.entry.focus_set()
+
+        tab = DraftReviewTab(
+            self.notebook,
+            tab_name="📝 Drafts & Review",
+            workspace_path=self.project_path,
+            on_send_to_ai=_on_send_to_ai,
+            on_close=_on_close_draft,
+        )
+        self._tabs.append(tab)
+        self.notebook.add(tab, text=" 📝 Drafts ")
         self.notebook.select(tab)
         return tab
 
@@ -807,6 +856,8 @@ class MaxPlusGUI(tk.Tk):
         self._close_tab_btn.configure(bg=T["bg2"], fg=T["err_hdr"], activebackground=T["bg3"])
         if hasattr(self, "_team_btn") and isinstance(self._team_btn, tk.Button):
             self._team_btn.configure(bg=T["bg2"], fg=T["accent"], activebackground=T["bg3"], activeforeground=T["accent_hover"])
+        if hasattr(self, "_draft_btn") and isinstance(self._draft_btn, tk.Button):
+            self._draft_btn.configure(bg=T["bg2"], fg=T["accent"], activebackground=T["bg3"], activeforeground=T["accent_hover"])
         self._theme_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
         self._settings_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
         self._mcp_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])

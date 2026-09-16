@@ -130,7 +130,12 @@ class TestGUIWindow(unittest.TestCase):
             self.assertIsNotNone(active_tab)
             sys_prompt = active_tab._effective_system_prompt()
             self.assertIn(str(other_path), sys_prompt)
-            self.assertIn("only report completion when the tool result confirms", sys_prompt)
+            self.assertIn("Mandatory Comprehensive Response", sys_prompt)
+
+            # 4. Verify opening Drafts tab
+            draft_tab = self.app._open_draft_tab()
+            self.assertIsNotNone(draft_tab)
+            self.assertEqual(draft_tab.workspace_path, other_path)
 
 
 if __name__ == "__main__":
