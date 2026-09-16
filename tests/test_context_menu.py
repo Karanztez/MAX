@@ -39,14 +39,15 @@ class TestContextMenu(unittest.TestCase):
         try:
             self.root = tk.Tk()
             self.root.withdraw()
-        except tk.TclError:
-            self.skipTest("Tkinter display not available")
+        except Exception as e:
+            self.skipTest(f"Tkinter display not available: {e}")
 
     def tearDown(self):
-        try:
-            self.root.destroy()
-        except Exception:
-            pass
+        if hasattr(self, "root") and self.root:
+            try:
+                self.root.destroy()
+            except Exception:
+                pass
 
     def test_text_selection_and_copy(self):
         txt = tk.Text(self.root)

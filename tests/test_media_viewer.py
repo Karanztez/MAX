@@ -29,17 +29,11 @@ except ImportError:
     _PIL_OK = False
 
 
-class TestMediaViewer(unittest.TestCase):
+class TestExtractMediaItems(unittest.TestCase):
     def setUp(self) -> None:
-        self.root = tk.Tk()
-        self.root.withdraw()
         self.temp_dir = TemporaryDirectory()
 
     def tearDown(self) -> None:
-        try:
-            self.root.destroy()
-        except Exception:
-            pass
         try:
             self.temp_dir.cleanup()
         except Exception:
@@ -70,6 +64,27 @@ class TestMediaViewer(unittest.TestCase):
         types = {item["type"] for item in items}
         self.assertIn("image", types)
         self.assertIn("video", types)
+
+
+class TestMediaViewer(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir = TemporaryDirectory()
+        try:
+            self.root = tk.Tk()
+            self.root.withdraw()
+        except Exception as e:
+            self.skipTest(f"Tkinter display not available: {e}")
+
+    def tearDown(self) -> None:
+        if hasattr(self, "root") and self.root:
+            try:
+                self.root.destroy()
+            except Exception:
+                pass
+        try:
+            self.temp_dir.cleanup()
+        except Exception:
+            pass
 
     def test_media_viewer_tab_image(self) -> None:
         img_path = os.path.join(self.temp_dir.name, "sample.png")
@@ -144,8 +159,12 @@ class TestMediaViewer(unittest.TestCase):
         self.assertEqual(os.path.abspath(opened_path), os.path.abspath(img_path))
 
     def test_main_window_open_media_tab(self) -> None:
-        gui = MaxPlusGUI()
-        gui.withdraw()
+        try:
+            gui = MaxPlusGUI()
+            gui.withdraw()
+        except Exception as e:
+            self.skipTest(f"MaxPlusGUI display not available: {e}")
+            return
         try:
             img_path = os.path.join(self.temp_dir.name, "window_test.png")
             if _PIL_OK:

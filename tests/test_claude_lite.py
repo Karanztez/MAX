@@ -17,29 +17,35 @@ MODELS   = [
     "claude-sonnet-4-6",
 ]
 
-print("=" * 60)
-print("MaxPlus Claude Lite — Connection Test")
-print("=" * 60)
+def run_live_test() -> None:
+    print("=" * 60)
+    print("MaxPlus Claude Lite — Connection Test")
+    print("=" * 60)
 
-# 1) GET /models
-client = AIClient(api_key=API_KEY, base_url=BASE_URL, model=MODELS[0], timeout=20)
-try:
-    models = client.list_models()
-    print(f"[PASS] GET /models -> {len(models)} models: {models}")
-except Exception as ex:
-    print(f"[FAIL] GET /models -> {ex}")
-    models = MODELS
-
-print()
-
-# 2) Quick ask per model
-for model in MODELS[:3]:       # test 3 models เพื่อไม่ให้นานเกิน
-    c = AIClient(api_key=API_KEY, base_url=BASE_URL, model=model, timeout=30)
+    # 1) GET /models
+    client = AIClient(api_key=API_KEY, base_url=BASE_URL, model=MODELS[0], timeout=20)
     try:
-        ans = c.ask("Reply with exactly: PONG", max_tokens=16)
-        print(f"[PASS] {model}: {ans!r}")
+        models = client.list_models()
+        print(f"[PASS] GET /models -> {len(models)} models: {models}")
     except Exception as ex:
-        print(f"[FAIL] {model}: {ex}")
+        print(f"[FAIL] GET /models -> {ex}")
+        models = MODELS
 
-print()
-print("Done.")
+    print()
+
+    # 2) Quick ask per model
+    for model in MODELS[:3]:       # test 3 models เพื่อไม่ให้นานเกิน
+        c = AIClient(api_key=API_KEY, base_url=BASE_URL, model=model, timeout=30)
+        try:
+            ans = c.ask("Reply with exactly: PONG", max_tokens=16)
+            print(f"[PASS] {model}: {ans!r}")
+        except Exception as ex:
+            print(f"[FAIL] {model}: {ex}")
+
+    print()
+    print("Done.")
+
+
+if __name__ == "__main__":
+    run_live_test()
+

@@ -59,10 +59,13 @@ class TestCli(unittest.TestCase):
             self.assertEqual(app.active_profile["base_url"], "https://api.custom.ai/v1")
 
     def test_handle_export_command(self) -> None:
-        with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(tempfile.gettempdir()) / "test_s.json")):
-            app = MaxTerminalApp()
-            res = app.handle_command("/export .")
-            self.assertTrue(res)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            sample_file = Path(tmp_dir) / "test.txt"
+            sample_file.write_text("MAX export test content", encoding="utf-8")
+            with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(tempfile.gettempdir()) / "test_s.json")):
+                app = MaxTerminalApp()
+                res = app.handle_command(f"/export {tmp_dir}")
+                self.assertTrue(res)
 
     def test_handle_profile_flexible_switch(self) -> None:
         with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(tempfile.gettempdir()) / "test_s.json")):

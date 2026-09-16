@@ -25,23 +25,29 @@ except (ImportError, ModuleNotFoundError):
     from src.core.provider_profiles import default_profiles  # type: ignore[no-redef]
 
 
-class TestUISmoke(unittest.TestCase):
-    def setUp(self) -> None:
-        self.root = tk.Tk()
-        self.root.withdraw()
-
-    def tearDown(self) -> None:
-        try:
-            self.root.destroy()
-        except Exception:
-            pass
-
+class TestThemesKeys(unittest.TestCase):
     def test_themes_keys(self) -> None:
         required = ["bg", "bg2", "bg3", "fg", "fg_dim", "sub", "border", "accent", "ai_hdr", "user_hdr", "code_bg", "code_fg"]
         for k in required:
             self.assertIn(k, DARK, f"Missing key {k} in DARK theme")
             self.assertIn(k, LIGHT, f"Missing key {k} in LIGHT theme")
             self.assertIn(k, T, f"Missing key {k} in active T theme")
+
+
+class TestUISmoke(unittest.TestCase):
+    def setUp(self) -> None:
+        try:
+            self.root = tk.Tk()
+            self.root.withdraw()
+        except Exception as e:
+            self.skipTest(f"Tkinter display not available: {e}")
+
+    def tearDown(self) -> None:
+        if hasattr(self, "root") and self.root:
+            try:
+                self.root.destroy()
+            except Exception:
+                pass
 
     def test_message_bubble_creation(self) -> None:
         # User bubble
@@ -79,3 +85,4 @@ class TestUISmoke(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
