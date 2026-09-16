@@ -84,9 +84,13 @@ class TestScreenManager(unittest.TestCase):
         self.assertTrue(self.mgr.link_screens("1", "2"))
         self.assertTrue(self.mgr.link_screens("2", "3"))
 
-        self.assertEqual(self.mgr.get_screen("1").linked_to, "2")
-        self.assertEqual(self.mgr.get_screen("2").linked_to, "3")
-        self.assertIsNone(self.mgr.get_screen("3").linked_to)
+        s1 = self.mgr.get_screen("1")
+        s2 = self.mgr.get_screen("2")
+        s3 = self.mgr.get_screen("3")
+        assert s1 is not None and s2 is not None and s3 is not None
+        self.assertEqual(s1.linked_to, "2")
+        self.assertEqual(s2.linked_to, "3")
+        self.assertIsNone(s3.linked_to)
 
         # Cannot link to self
         self.assertFalse(self.mgr.link_screens("1", "1"))
@@ -95,7 +99,9 @@ class TestScreenManager(unittest.TestCase):
 
         # Unlink
         self.assertTrue(self.mgr.unlink_screen("1"))
-        self.assertIsNone(self.mgr.get_screen("1").linked_to)
+        s1 = self.mgr.get_screen("1")
+        assert s1 is not None
+        self.assertIsNone(s1.linked_to)
 
     def test_remove_screen(self):
         self.mgr.create_screen(name="Screen 2")
@@ -103,7 +109,9 @@ class TestScreenManager(unittest.TestCase):
         self.assertTrue(self.mgr.remove_screen("2"))
         self.assertEqual(len(self.mgr.list_screens()), 1)
         # Link to 2 should be cleaned
-        self.assertIsNone(self.mgr.get_screen("1").linked_to)
+        s1 = self.mgr.get_screen("1")
+        assert s1 is not None
+        self.assertIsNone(s1.linked_to)
 
         # Cannot remove only screen
         self.assertFalse(self.mgr.remove_screen("1"))
@@ -154,7 +162,9 @@ class TestScreenMCPTools(unittest.TestCase):
         res = _builtin_screen_link({"from_id": "1", "to_id": "2"})
         self.assertIn("Screen 1", res)
         self.assertIn("Screen 2", res)
-        self.assertEqual(self.mgr.get_screen("1").linked_to, "2")
+        s1 = self.mgr.get_screen("1")
+        assert s1 is not None
+        self.assertEqual(s1.linked_to, "2")
 
 
 class TestCLIScreenIntegration(unittest.TestCase):
@@ -184,10 +194,14 @@ class TestCLIScreenIntegration(unittest.TestCase):
     def test_cli_screen_link_and_unlink(self):
         self.app.handle_command("/screen create Coder coder")
         self.assertTrue(self.app.handle_command("/screen link 1 2"))
-        self.assertEqual(self.app.screen_manager.get_screen("1").linked_to, "2")
+        s1 = self.app.screen_manager.get_screen("1")
+        assert s1 is not None
+        self.assertEqual(s1.linked_to, "2")
 
         self.assertTrue(self.app.handle_command("/screen unlink 1"))
-        self.assertIsNone(self.app.screen_manager.get_screen("1").linked_to)
+        s1_after = self.app.screen_manager.get_screen("1")
+        assert s1_after is not None
+        self.assertIsNone(s1_after.linked_to)
 
     def test_cli_team_init_and_status(self):
         self.assertTrue(self.app.handle_command("/team init"))
