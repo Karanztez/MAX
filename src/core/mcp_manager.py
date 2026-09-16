@@ -264,7 +264,7 @@ def _builtin_search_web(query: str, count: int = 5) -> str:
     query = query.strip()
     if not query:
         return "Error: Query is empty"
-    count = max(1, min(int(count or 5), 10))
+    count = max(1, min(count, 10))
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -345,7 +345,7 @@ def _builtin_fetch_web(url: str, max_length: int = 8000) -> str:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,text/plain,application/json;q=0.9,*/*;q=0.8",
     }
-    max_length = max(500, min(int(max_length or 8000), 30000))
+    max_length = max(500, min(max_length, 30000))
 
     try:
         req = urllib.request.Request(url, headers=headers, method="GET")
@@ -440,8 +440,8 @@ def _builtin_read_file(path: str, start_line: int = 1, line_count: int = 200) ->
         content = target.read_text(encoding="utf-8", errors="replace")
         lines = content.splitlines()
         total_lines = len(lines)
-        start = max(1, int(start_line or 1))
-        count = max(1, min(int(line_count or 200), 1000))
+        start = max(1, start_line)
+        count = max(1, min(line_count, 1000))
         end = min(start + count - 1, total_lines)
 
         slice_lines = lines[start - 1 : end]
@@ -523,7 +523,7 @@ def _builtin_run_command(command: str, cwd: str = ".", timeout_seconds: int = 30
     if not command:
         return "Error: Command is empty"
 
-    timeout = max(1, min(int(timeout_seconds or 30), 120))
+    timeout = max(1, min(timeout_seconds, 120))
     target_cwd = str(Path(cwd).resolve())
 
     try:
@@ -564,7 +564,7 @@ def _builtin_run_python(code: str, timeout_seconds: int = 15) -> str:
     if not code:
         return "Error: Code is empty"
 
-    timeout = max(1, min(int(timeout_seconds or 15), 60))
+    timeout = max(1, min(timeout_seconds, 60))
 
     with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as temp_file:
         temp_file.write(code)
@@ -631,7 +631,8 @@ def _builtin_get_file_info(path: str) -> str:
     import datetime
     stat = p.stat()
     mtime = datetime.datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-    ctime = datetime.datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
+    ctime_val = getattr(stat, "st_birthtime", stat.st_mtime)
+    ctime = datetime.datetime.fromtimestamp(ctime_val).strftime("%Y-%m-%d %H:%M:%S")
     is_dir = p.is_dir()
     size = stat.st_size
     size_str = f"{size} B" if size < 1024 else f"{size/1024:.2f} KB ({size/1024/1024:.2f} MB)"
@@ -683,7 +684,7 @@ def _builtin_http_request(url: str, method: str = "GET", headers: Optional[dict[
         "Accept": "*/*",
     }
     if headers and isinstance(headers, dict):
-        req_headers.update({str(k): str(v) for k, v in headers.items()})
+        req_headers.update(headers)
 
     data_bytes = body.encode("utf-8") if body else None
     req = urllib.request.Request(url, data=data_bytes, headers=req_headers, method=method)
@@ -716,7 +717,7 @@ def _builtin_git_diff(path: str = ".", cached: bool = False) -> str:
 
 def _builtin_git_log(path: str = ".", count: int = 5) -> str:
     """Get recent Git commits in oneline format."""
-    n = max(1, min(int(count or 5), 30))
+    n = max(1, min(count, 30))
     return _builtin_run_command(f"git log -n {n} --oneline", cwd=path, timeout_seconds=10)
 
 
@@ -746,7 +747,7 @@ def _builtin_json_format(text: str, indent: int = 2) -> str:
     """Parse, validate, and pretty-print JSON string."""
     try:
         data = json.loads(text.strip())
-        return json.dumps(data, indent=int(indent or 2), ensure_ascii=False)
+        return json.dumps(data, indent=max(0, min(indent, 8)), ensure_ascii=False)
     except Exception as ex:
         return f"Invalid JSON error: {ex}"
 
