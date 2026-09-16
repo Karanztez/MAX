@@ -1,6 +1,7 @@
 """
 src/ui/dialogs/team_config_dialog.py — Dialog for configuring Multi-Agent Team Room members.
 Allows configuring Provider, Model, System Prompt, and parameters for each agent role.
+Supports dynamically adding, removing, and reordering team members with same or different models.
 """
 
 from dataclasses import dataclass, asdict
@@ -102,6 +103,76 @@ def get_default_team_agents() -> list[TeamAgentConfig]:
     ]
 
 
+PRESET_TEMPLATES: list[dict[str, Any]] = [
+    {
+        "name": "Tester",
+        "icon": "🧪",
+        "role_description": "เขียน Unit Tests และทดสอบความถูกต้องของระบบ",
+        "system_prompt": (
+            "You are a QA Automation & Test Engineer. "
+            "Write comprehensive, robust, and clean unit/integration tests for the code created by the team. "
+            "Cover edge cases, error conditions, boundary values, and provide mock examples."
+        ),
+        "temperature": 0.3,
+        "hdr_color": "#a78bfa",  # Soft Purple
+    },
+    {
+        "name": "Security",
+        "icon": "🛡️",
+        "role_description": "ตรวจสอบช่องโหว่ความปลอดภัยและวิเคราะห์ภัยคุกคาม",
+        "system_prompt": (
+            "You are a Cybersecurity & Penetration Testing Specialist. "
+            "Analyze the architecture and code for security vulnerabilities (OWASP Top 10, injection, auth bypass, data leaks), "
+            "and suggest concrete hardening measures."
+        ),
+        "temperature": 0.3,
+        "hdr_color": "#f87171",  # Soft Red
+    },
+    {
+        "name": "Docs",
+        "icon": "📝",
+        "role_description": "เขียนคู่มือการใช้งาน, API Docs, และสรุปวิธีติดตั้ง",
+        "system_prompt": (
+            "You are a Technical Writer. "
+            "Create clear, professional, and thorough documentation, README, and API guides based on "
+            "the system designed and implemented by the team."
+        ),
+        "temperature": 0.5,
+        "hdr_color": "#38bdf8",  # Soft Sky Blue
+    },
+    {
+        "name": "DevOps",
+        "icon": "🚀",
+        "role_description": "ออกแบบ Docker, CI/CD Pipeline, และแนวทางการ Deploy",
+        "system_prompt": (
+            "You are a Senior DevOps & Cloud Infrastructure Engineer. "
+            "Design Dockerfile, CI/CD pipeline, environment configs, and deployment scripts for this application."
+        ),
+        "temperature": 0.4,
+        "hdr_color": "#fb923c",  # Soft Orange
+    },
+    {
+        "name": "Researcher",
+        "icon": "🔬",
+        "role_description": "ค้นคว้าข้อมูล เทคโนโลยี เปรียบเทียบ Best Practices",
+        "system_prompt": (
+            "You are a Deep Tech Researcher & Analyst. "
+            "Investigate relevant libraries, frameworks, architectural trade-offs, and state-of-the-art solutions."
+        ),
+        "temperature": 0.5,
+        "hdr_color": "#2dd4bf",  # Soft Teal
+    },
+    {
+        "name": "Custom Agent",
+        "icon": "🤖",
+        "role_description": "สมาชิกผู้ช่วยในทีม AI กำหนดบทบาทตามต้องการ",
+        "system_prompt": "You are a specialized AI assistant in the team. Follow user instructions and collaborate with your teammates.",
+        "temperature": 0.6,
+        "hdr_color": "#818cf8",  # Soft Indigo
+    },
+]
+
+
 class TeamConfigDialog(tk.Toplevel):
     """Configuration Dialog for setting up Team Room agents."""
 
@@ -114,8 +185,8 @@ class TeamConfigDialog(tk.Toplevel):
     ) -> None:
         super().__init__(parent)
         self.title("⚙ ตั้งค่าทีม AI (Team Room Configuration)")
-        self.geometry("860x650")
-        self.minsize(780, 560)
+        self.geometry("920x700")
+        self.minsize(820, 600)
         self.configure(bg=T["bg"])
         self.transient(parent.winfo_toplevel())
         self.grab_set()
@@ -125,8 +196,11 @@ class TeamConfigDialog(tk.Toplevel):
         self.agents = [TeamAgentConfig.from_dict(a.to_dict()) for a in agents]
         self.on_save = on_save
         self._current_agent_idx = 0
+        self._agent_tab_buttons: list[tk.Button] = []
+        self._ignore_name_traces = False
 
         self._build_ui()
+        self._render_tab_bar()
         self._load_agent_to_ui(0)
 
     def _build_ui(self) -> None:
@@ -135,7 +209,7 @@ class TeamConfigDialog(tk.Toplevel):
 
         # Header
         header = tk.Frame(body, bg=T["bg"])
-        header.pack(fill="x", pady=(0, 14))
+        header.pack(fill="x", pady=(0, 12))
 
         tk.Label(
             header,
@@ -161,41 +235,27 @@ class TeamConfigDialog(tk.Toplevel):
         )
         save_btn.pack(side="right")
 
-        # Top agent selector tabs
-        self._tab_bar = tk.Frame(body, bg=T["bg"])
-        self._tab_bar.pack(fill="x", pady=(0, 14))
-        self._agent_tab_buttons: list[tk.Button] = []
+        # Top agent selector tabs (Scrollable / dynamic)
+        tab_container = tk.Frame(body, bg=T["bg"])
+        tab_container.pack(fill="x", pady=(0, 12))
 
-        for idx, agent in enumerate(self.agents):
-            btn = tk.Button(
-                self._tab_bar,
-                text=f"{agent.icon} {agent.name}",
-                bg=T["bg2"],
-                fg=T["fg"],
-                font=FONT_BOLD,
-                relief="flat",
-                padx=16,
-                pady=6,
-                cursor="hand2",
-                command=lambda i=idx: self._switch_agent(i),
-            )
-            btn.pack(side="left", padx=(0, 8))
-            self._agent_tab_buttons.append(btn)
+        self._tab_bar = tk.Frame(tab_container, bg=T["bg"])
+        self._tab_bar.pack(side="left", fill="x", expand=True)
 
         # Main agent editor card
         self._card = tk.Frame(
             body,
             bg=T["bg2"],
             padx=18,
-            pady=16,
+            pady=14,
             highlightthickness=1,
             highlightbackground=T["border"],
         )
         self._card.pack(fill="both", expand=True)
 
-        # 1. Enabled toggle & description
+        # 1. Enabled toggle & action buttons (Move Left, Move Right, Delete)
         top_row = tk.Frame(self._card, bg=T["bg2"])
-        top_row.pack(fill="x", pady=(0, 12))
+        top_row.pack(fill="x", pady=(0, 10))
 
         self._enabled_var = tk.BooleanVar(value=True)
         self._enabled_cb = tk.Checkbutton(
@@ -211,18 +271,107 @@ class TeamConfigDialog(tk.Toplevel):
         )
         self._enabled_cb.pack(side="left")
 
-        self._desc_lbl = tk.Label(
-            top_row,
-            text="",
-            bg=T["bg2"],
-            fg=T["fg_dim"],
-            font=FONT_TINY,
-        )
-        self._desc_lbl.pack(side="right")
+        # Action bar: Move left/right, Delete
+        action_bar = tk.Frame(top_row, bg=T["bg2"])
+        action_bar.pack(side="right")
 
-        # 2. Provider & Model row
+        self._btn_move_left = tk.Button(
+            action_bar,
+            text="◀ ลำดับก่อนหน้า",
+            bg=T["bg3"],
+            fg=T["fg"],
+            activebackground=T["bg"],
+            activeforeground=T["fg"],
+            font=FONT_TINY,
+            relief="flat",
+            padx=8,
+            pady=3,
+            cursor="hand2",
+            command=lambda: self._move_current_agent(-1),
+        )
+        self._btn_move_left.pack(side="left", padx=(0, 4))
+
+        self._btn_move_right = tk.Button(
+            action_bar,
+            text="ลำดับถัดไป ▶",
+            bg=T["bg3"],
+            fg=T["fg"],
+            activebackground=T["bg"],
+            activeforeground=T["fg"],
+            font=FONT_TINY,
+            relief="flat",
+            padx=8,
+            pady=3,
+            cursor="hand2",
+            command=lambda: self._move_current_agent(1),
+        )
+        self._btn_move_right.pack(side="left", padx=(0, 8))
+
+        self._btn_delete = tk.Button(
+            action_bar,
+            text="🗑 ลบสมาชิกนี้",
+            bg=T["bg3"],
+            fg=T["err_hdr"],
+            activebackground=T["err_hdr"],
+            activeforeground="#ffffff",
+            font=FONT_TINY,
+            relief="flat",
+            padx=8,
+            pady=3,
+            cursor="hand2",
+            command=self._delete_current_agent,
+        )
+        self._btn_delete.pack(side="left")
+
+        # 2. Member Name, Icon, and Role Description row
+        row_identity = tk.Frame(self._card, bg=T["bg2"])
+        row_identity.pack(fill="x", pady=(0, 10))
+
+        tk.Label(row_identity, text="ไอคอน:", bg=T["bg2"], fg=T["fg"], font=FONT).pack(side="left", padx=(0, 6))
+        self._icon_var = tk.StringVar(value="🤖")
+        self._icon_box = ttk.Combobox(
+            row_identity,
+            textvariable=self._icon_var,
+            values=["📋", "💻", "🔍", "🧪", "🛡️", "📝", "🚀", "🎨", "🔬", "🤖", "⚡", "📊", "💡"],
+            width=4,
+            font=FONT,
+        )
+        self._icon_box.pack(side="left", padx=(0, 14))
+        self._icon_var.trace_add("write", lambda *_: self._on_identity_change())
+
+        tk.Label(row_identity, text="ชื่อสมาชิก:", bg=T["bg2"], fg=T["fg"], font=FONT).pack(side="left", padx=(0, 6))
+        self._name_var = tk.StringVar(value="Agent")
+        self._name_entry = tk.Entry(
+            row_identity,
+            textvariable=self._name_var,
+            bg=T["bg"],
+            fg=T["fg"],
+            insertbackground=T["fg"],
+            font=FONT_BOLD,
+            width=14,
+            bd=1,
+            relief="solid",
+        )
+        self._name_entry.pack(side="left", padx=(0, 14))
+        self._name_var.trace_add("write", lambda *_: self._on_identity_change())
+
+        tk.Label(row_identity, text="คำอธิบายบทบาท:", bg=T["bg2"], fg=T["fg"], font=FONT).pack(side="left", padx=(0, 6))
+        self._desc_var = tk.StringVar()
+        self._desc_entry = tk.Entry(
+            row_identity,
+            textvariable=self._desc_var,
+            bg=T["bg"],
+            fg=T["fg"],
+            insertbackground=T["fg"],
+            font=FONT,
+            bd=1,
+            relief="solid",
+        )
+        self._desc_entry.pack(side="left", fill="x", expand=True)
+
+        # 3. Provider & Model row (Can choose same or different model freely)
         row2 = tk.Frame(self._card, bg=T["bg2"])
-        row2.pack(fill="x", pady=(0, 12))
+        row2.pack(fill="x", pady=(0, 10))
 
         tk.Label(row2, text="ผู้ให้บริการ (Provider):", bg=T["bg2"], fg=T["fg"], font=FONT).grid(
             row=0, column=0, sticky="w", padx=(0, 10), pady=4
@@ -247,14 +396,14 @@ class TeamConfigDialog(tk.Toplevel):
             row2,
             textvariable=self._model_var,
             state="readonly",
-            width=24,
+            width=26,
             font=FONT,
         )
         self._model_box.grid(row=0, column=3, sticky="w", pady=4)
 
-        # 3. Temperature row
+        # 4. Temperature row
         row3 = tk.Frame(self._card, bg=T["bg2"])
-        row3.pack(fill="x", pady=(0, 12))
+        row3.pack(fill="x", pady=(0, 10))
 
         tk.Label(row3, text="ความสร้างสรรค์ (Temperature):", bg=T["bg2"], fg=T["fg"], font=FONT).pack(
             side="left", padx=(0, 10)
@@ -274,17 +423,17 @@ class TeamConfigDialog(tk.Toplevel):
         )
         self._temp_scale.pack(side="left", padx=(0, 10))
 
-        # 4. System Prompt editor
+        # 5. System Prompt editor
         tk.Label(
             self._card,
             text="คำสั่งระบบประจำบทบาท (System Prompt / Instructions):",
             bg=T["bg2"],
             fg=T["fg"],
             font=FONT_BOLD,
-        ).pack(anchor="w", pady=(6, 4))
+        ).pack(anchor="w", pady=(4, 4))
 
         prompt_box_frame = tk.Frame(self._card, bg=T["bg"], bd=1, relief="solid")
-        prompt_box_frame.pack(fill="both", expand=True, pady=(0, 4))
+        prompt_box_frame.pack(fill="both", expand=True, pady=(0, 2))
 
         self._prompt_text = tk.Text(
             prompt_box_frame,
@@ -300,9 +449,151 @@ class TeamConfigDialog(tk.Toplevel):
         self._prompt_text.pack(fill="both", expand=True)
         attach_text_context_menu(self._prompt_text, is_editable=True)
 
+    def _render_tab_bar(self) -> None:
+        """Render tab buttons for all agents and a + Add Member button."""
+        for w in self._tab_bar.winfo_children():
+            w.destroy()
+        self._agent_tab_buttons.clear()
+
+        for idx, agent in enumerate(self.agents):
+            btn = tk.Button(
+                self._tab_bar,
+                text=f"{agent.icon} {agent.name}",
+                bg=T["accent"] if idx == self._current_agent_idx else T["bg2"],
+                fg="#ffffff" if idx == self._current_agent_idx else T["fg"],
+                font=FONT_BOLD,
+                relief="flat",
+                padx=14,
+                pady=5,
+                cursor="hand2",
+                command=lambda i=idx: self._switch_agent(i),
+            )
+            btn.pack(side="left", padx=(0, 6))
+            self._agent_tab_buttons.append(btn)
+
+        # "+ เพิ่มสมาชิก" button
+        add_btn = tk.Button(
+            self._tab_bar,
+            text="＋ เพิ่มสมาชิก",
+            bg=T["bg3"],
+            fg=T["accent"],
+            activebackground=T["accent"],
+            activeforeground="#ffffff",
+            font=FONT_BOLD,
+            relief="flat",
+            padx=12,
+            pady=5,
+            cursor="hand2",
+            command=self._show_add_agent_menu,
+        )
+        add_btn.pack(side="left", padx=(4, 0))
+
+    def _show_add_agent_menu(self) -> None:
+        """Display popup menu with agent presets or custom agent."""
+        self._save_current_agent_from_ui()
+        menu = tk.Menu(self, tearoff=False, bg=T["bg2"], fg=T["fg"], activebackground=T["accent"], font=FONT)
+        for p in PRESET_TEMPLATES:
+            menu.add_command(
+                label=f"{p['icon']} {p['name']} — {p['role_description'][:32]}...",
+                command=lambda preset=p: self._add_agent_from_preset(preset),
+            )
+        menu.add_separator()
+        menu.add_command(
+            label="🤖 สมาชิกใหม่แบบกำหนดเอง (Custom Agent)",
+            command=lambda: self._add_agent_from_preset({
+                "name": f"Agent {len(self.agents) + 1}",
+                "icon": "🤖",
+                "role_description": "บทบาทเสริมสำหรับทีม AI",
+                "system_prompt": "You are a specialized AI assistant in the team. Follow user instructions and collaborate with teammates.",
+                "temperature": 0.5,
+                "hdr_color": "#818cf8",
+            }),
+        )
+
+        x = self.winfo_pointerx()
+        y = self.winfo_pointery()
+        try:
+            menu.tk_popup(x, y)
+        finally:
+            menu.grab_release()
+
+    def _add_agent_from_preset(self, preset: dict[str, Any]) -> None:
+        """Instantiate new agent and switch to it."""
+        num = 1
+        existing_ids = {a.id for a in self.agents}
+        base_id = preset["name"].lower().replace(" ", "_")
+        new_id = base_id
+        while new_id in existing_ids:
+            num += 1
+            new_id = f"{base_id}_{num}"
+
+        # Inherit active provider & model (can share the exact same model or different models!)
+        active_prof = self.profiles[0] if self.profiles else None
+        cur_agent = self.agents[self._current_agent_idx] if self.agents else None
+        prof_id = cur_agent.profile_id if cur_agent and cur_agent.profile_id else (active_prof["id"] if active_prof else "")
+        prof_name = cur_agent.profile_name if cur_agent and cur_agent.profile_name else (active_prof["name"] if active_prof else "")
+        model = cur_agent.model if cur_agent and cur_agent.model else (active_prof["model"] if active_prof else "")
+
+        new_agent = TeamAgentConfig(
+            id=new_id,
+            name=preset["name"],
+            icon=preset["icon"],
+            role_description=preset["role_description"],
+            enabled=True,
+            profile_id=prof_id,
+            profile_name=prof_name,
+            model=model,
+            system_prompt=preset["system_prompt"],
+            temperature=preset.get("temperature", 0.6),
+            hdr_color=preset.get("hdr_color", "#818cf8"),
+        )
+        self.agents.append(new_agent)
+        new_idx = len(self.agents) - 1
+        self._render_tab_bar()
+        self._switch_agent(new_idx)
+
+    def _delete_current_agent(self) -> None:
+        """Remove currently selected agent if team has >1 members."""
+        if len(self.agents) <= 1:
+            messagebox.showwarning("คำเตือน", "ไม่สามารถลบสมาชิกได้ ทีมต้องมีสมาชิกอย่างน้อย 1 คน", parent=self)
+            return
+
+        del self.agents[self._current_agent_idx]
+        if self._current_agent_idx >= len(self.agents):
+            self._current_agent_idx = len(self.agents) - 1
+
+        self._render_tab_bar()
+        self._load_agent_to_ui(self._current_agent_idx)
+
+    def _move_current_agent(self, direction: int) -> None:
+        """Reorder agents: direction -1 for left/earlier, +1 for right/later."""
+        new_idx = self._current_agent_idx + direction
+        if 0 <= new_idx < len(self.agents):
+            self._save_current_agent_from_ui()
+            self.agents[self._current_agent_idx], self.agents[new_idx] = (
+                self.agents[new_idx],
+                self.agents[self._current_agent_idx],
+            )
+            self._current_agent_idx = new_idx
+            self._render_tab_bar()
+            self._load_agent_to_ui(new_idx)
+
+    def _on_identity_change(self) -> None:
+        """Update active tab button label when name or icon is changed in entry."""
+        if self._ignore_name_traces:
+            return
+        if 0 <= self._current_agent_idx < len(self._agent_tab_buttons):
+            name = self._name_var.get().strip() or "Agent"
+            icon = self._icon_var.get().strip() or "🤖"
+            btn = self._agent_tab_buttons[self._current_agent_idx]
+            btn.configure(text=f"{icon} {name}")
+
     def _save_current_agent_from_ui(self) -> None:
         if 0 <= self._current_agent_idx < len(self.agents):
             agent = self.agents[self._current_agent_idx]
+            agent.name = self._name_var.get().strip() or agent.name
+            agent.icon = self._icon_var.get().strip() or agent.icon
+            agent.role_description = self._desc_var.get().strip()
             agent.enabled = self._enabled_var.get()
             prov_name = self._prov_var.get()
             prof = next((p for p in self.profiles if p["name"] == prov_name), None)
@@ -319,6 +610,14 @@ class TeamConfigDialog(tk.Toplevel):
         self._current_agent_idx = idx
         agent = self.agents[idx]
 
+        self._ignore_name_traces = True
+        try:
+            self._name_var.set(agent.name)
+            self._icon_var.set(agent.icon)
+            self._desc_var.set(agent.role_description)
+        finally:
+            self._ignore_name_traces = False
+
         # Update tab button styles
         for i, btn in enumerate(self._agent_tab_buttons):
             if i == idx:
@@ -327,7 +626,11 @@ class TeamConfigDialog(tk.Toplevel):
                 btn.configure(bg=T["bg2"], fg=T["fg"])
 
         self._enabled_var.set(agent.enabled)
-        self._desc_lbl.configure(text=agent.role_description)
+
+        # Update button states
+        self._btn_move_left.configure(state="normal" if idx > 0 else "disabled")
+        self._btn_move_right.configure(state="normal" if idx < len(self.agents) - 1 else "disabled")
+        self._btn_delete.configure(state="normal" if len(self.agents) > 1 else "disabled")
 
         # Profile selection
         current_prof = next((p for p in self.profiles if p["id"] == agent.profile_id), None)

@@ -141,5 +141,75 @@ class TestPerTabIndependence(unittest.TestCase):
         self.assertEqual(tab2.profile_id, "gemini_full")
 
 
+class TestDynamicTeamMembers(unittest.TestCase):
+    """Test dynamically adding, removing, and chaining custom team members with same or different models."""
+
+    def test_add_custom_members_same_model(self):
+        """Verify multiple agents can share the same model freely."""
+        tab = AgentTeamTab.__new__(AgentTeamTab)
+        tab.profiles = [
+            {"id": "china_town", "name": "China Town (จีน)", "models": ["deepseek-v4.1-flash", "qwen-2.5-coder"], "model": "deepseek-v4.1-flash"},
+        ]
+        tab.agents = get_default_team_agents()
+
+        # Add a 4th member: Tester sharing the exact same model
+        tester = TeamAgentConfig(
+            id="tester",
+            name="Tester",
+            icon="🧪",
+            role_description="เขียนชุดทดสอบและจำลองเคส",
+            enabled=True,
+            profile_id="china_town",
+            profile_name="China Town (จีน)",
+            model="deepseek-v4.1-flash",  # Same model as Planner/Coder
+            system_prompt="Write unit tests for the solution.",
+        )
+        tab.agents.append(tester)
+
+        self.assertEqual(len(tab.agents), 4)
+        # Verify both coder and tester use the same model
+        self.assertEqual(tab.agents[1].model or "deepseek-v4.1-flash", tab.agents[3].model)
+
+        # Test prompt construction for the 4th agent receives previous 3 outputs
+        user_task = "Create a login authentication system"
+        prev_outputs = {
+            "planner": "Auth architecture: JWT tokens + bcrypt hashing",
+            "coder": "def login(): return generate_jwt()",
+            "reviewer": "Security check: Password salt must be at least 12 rounds",
+        }
+        tester_prompt = tab._build_agent_prompt("tester", user_task, prev_outputs)
+        self.assertIn(user_task, tester_prompt)
+        self.assertIn("Auth architecture", tester_prompt)
+        self.assertIn("generate_jwt", tester_prompt)
+        self.assertIn("Security check", tester_prompt)
+        self.assertIn("Tester", tester_prompt)
+
+    def test_reordering_and_deleting_agents(self):
+        agents = get_default_team_agents()
+        self.assertEqual(len(agents), 3)
+
+        # Add 4th agent
+        docs = TeamAgentConfig(
+            id="docs",
+            name="Docs",
+            icon="📝",
+            role_description="เขียนคู่มือ",
+            enabled=True,
+        )
+        agents.append(docs)
+        self.assertEqual(len(agents), 4)
+
+        # Reorder: swap Reviewer and Docs
+        agents[2], agents[3] = agents[3], agents[2]
+        self.assertEqual(agents[2].id, "docs")
+        self.assertEqual(agents[3].id, "reviewer")
+
+        # Delete an agent
+        del agents[1]  # Delete coder
+        self.assertEqual(len(agents), 3)
+        self.assertEqual([a.id for a in agents], ["planner", "docs", "reviewer"])
+
+
 if __name__ == "__main__":
     unittest.main()
+

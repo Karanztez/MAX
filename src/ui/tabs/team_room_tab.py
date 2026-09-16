@@ -401,6 +401,10 @@ class AgentTeamTab(tk.Frame):
         self, agent_id: str, user_task: str, previous_outputs: dict[str, str]
     ) -> str:
         """Construct tailored prompt injecting previous agents' insights."""
+        matching_agent = next((a for a in self.agents if a.id == agent_id), None)
+        agent_name = matching_agent.name if matching_agent else agent_id
+        agent_role_desc = matching_agent.role_description if matching_agent else ""
+
         if agent_id == "planner":
             return (
                 f"เป้าหมาย / ความต้องการจากผู้ใช้:\n"
@@ -409,7 +413,11 @@ class AgentTeamTab(tk.Frame):
                 f"และกำหนดแผนขั้นตอนการพัฒนาที่ละเอียดและชัดเจนสำหรับ Coder"
             )
         elif agent_id == "coder":
-            planner_spec = previous_outputs.get("planner", "(ไม่มีแผนงานจาก Planner)")
+            planner_spec = previous_outputs.get("planner", "")
+            if not planner_spec and previous_outputs:
+                planner_spec = list(previous_outputs.values())[0]
+            if not planner_spec:
+                planner_spec = "(ไม่มีแผนงานจาก Planner)"
             return (
                 f"[โจทย์จากผู้ใช้]:\n{user_task}\n\n"
                 f"[แผนสถาปัตยกรรมและข้อกำหนดจาก Planner]:\n{planner_spec}\n\n"
@@ -426,11 +434,26 @@ class AgentTeamTab(tk.Frame):
                 f"จุดปรับปรุงประสิทธิภาพ (Performance) และสรุปความพร้อมของโค้ด"
             )
         else:
-            # Generic fallback
-            history_summary = "\n\n".join(
-                f"[{k.upper()}]:\n{v}" for k, v in previous_outputs.items()
+            # Dynamic context for custom members (Tester, Security, Docs, DevOps, etc.)
+            if not previous_outputs:
+                return (
+                    f"เป้าหมาย / โจทย์ของผู้ใช้:\n\"\"\"\n{user_task}\n\"\"\"\n\n"
+                    f"คำสั่ง: กรุณาดำเนินการตามหน้าที่ของคุณ ({agent_name}: {agent_role_desc}) ให้ละเอียดและสมบูรณ์"
+                )
+
+            history_blocks = []
+            for prev_id, prev_content in previous_outputs.items():
+                prev_agent = next((a for a in self.agents if a.id == prev_id), None)
+                label = f"{prev_agent.icon} {prev_agent.name}" if prev_agent else prev_id.upper()
+                history_blocks.append(f"[{label}]:\n{prev_content}")
+
+            history_summary = "\n\n".join(history_blocks)
+            role_hint = f" ({agent_role_desc})" if agent_role_desc else ""
+            return (
+                f"[โจทย์จากผู้ใช้]:\n{user_task}\n\n"
+                f"[ผลการทำงานและข้อมูลจากสมาชิกในทีมก่อนหน้า]:\n{history_summary}\n\n"
+                f"คำสั่ง: ในฐานะ {agent_name}{role_hint} กรุณาตรวจสอบข้อมูลและดำเนินการตามหน้าที่ของคุณอย่างสมบูรณ์"
             )
-            return f"User Goal:\n{user_task}\n\nPrevious outputs:\n{history_summary}\n\nPlease proceed."
 
     def _on_pipeline_finished(self) -> None:
         self._is_running = False
