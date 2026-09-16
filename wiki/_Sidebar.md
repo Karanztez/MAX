@@ -17,6 +17,7 @@
 
 - **[[🛠 Agent Tools Reference\|Agent-Tools-Reference]]**
 - **[[🧩 Skills Management\|Skills-Management]]**
+- **[[🤝 TeamAI Integration\|TeamAI-Integration]]**
 - **[[🛡 Security & Domain Guard\|Web-Security]]**
 
 ---

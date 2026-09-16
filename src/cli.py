@@ -539,11 +539,32 @@ class MaxTerminalApp:
                 safe_print(color(f"\n{res}", Colors.CYAN))
                 return True
 
+        elif action in {"/teamai", "/team"}:
+            sub = parts[1].lower() if len(parts) > 1 else "status"
+            extra = " ".join(parts[2:]).strip() if len(parts) > 2 else ""
+
+            if sub in {"help", "-h", "--help"}:
+                safe_print(f"""
+{color('คำสั่งจัดการ Tencent TeamAI (Team Synchronization):', Colors.BOLD)}
+  {color('/teamai pull', Colors.CYAN)}               - ดึง Skills, Rules, และความรู้ของทีมล่าสุดจาก Git
+  {color('/teamai push', Colors.CYAN)}               - ส่งต่อทักษะและบทเรียนใหม่ (Learnings) ไปยังทีม
+  {color('/teamai status', Colors.CYAN)}             - ตรวจสอบสถานะการเชื่อมต่อ TeamAI และ Git Repo
+  {color('/teamai init <git_repo_url>', Colors.CYAN)} - ผูกโปรเจกต์นี้เข้ากับ Git Repo ของทีม
+  {color('/teamai <command> [args...]', Colors.CYAN)} - รันคำสั่ง TeamAI ใดๆ โดยตรง
+""")
+                return True
+
+            safe_print(color(f"⚡ กำลังดำเนินการ 'teamai {sub}'...", Colors.YELLOW))
+            res = self.mcp_manager.execute_tool("teamai_command", {"subcommand": sub, "extra_args": extra})
+            safe_print(f"\n{res}\n")
+            return True
+
         elif action == "/help":
             safe_print(f"""
 {color("คำสั่งที่ใช้งานได้ (Terminal Commands):", Colors.BOLD)}
   {color('/setup', Colors.CYAN)}                  - ตัวช่วยเลือกผู้ให้บริการ & โมเดล (โหมด 1-2-3-4)
   {color('/security', Colors.CYAN)}               - ตรวจสอบ/จัดการสิทธิ์การเข้าถึงเว็บไซต์ (Web Security)
+  {color('/teamai [pull|push|status]', Colors.CYAN)} - ซิงค์และแชร์ Skills/Rules ร่วมกับทีม (TeamAI)
   {color('/skills', Colors.CYAN)}                 - แสดงรายการ ทักษะ (Skills) ที่ติดตั้งอยู่ในระบบ
   {color('/skill install <source>', Colors.CYAN)}  - ติดตั้ง Skill ใหม่จาก GitHub / URL อัตโนมัติ
   {color('/skill remove <id>', Colors.CYAN)}       - ลบ Skill ออกจากระบบ
