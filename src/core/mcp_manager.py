@@ -330,6 +330,69 @@ def _builtin_search_web(query: str, count: int = 5) -> str:
     return f"ไม่พบผลการค้นหาสำหรับ '{query}'"
 
 
+_WEB_PERMISSION_HANDLER: Optional[Callable[[str, str, str], bool]] = None
+
+
+def set_web_permission_handler(handler: Optional[Callable[[str, str, str], bool]]) -> None:
+    """Register interactive permission handler for web access: handler(domain, url, action) -> bool."""
+    global _WEB_PERMISSION_HANDLER
+    _WEB_PERMISSION_HANDLER = handler
+
+
+def check_web_permission(url: str, action: str = "อ่านเนื้อหาหน้าเว็บ") -> tuple[bool, str]:
+    """Check if web access to URL is permitted by policy, whitelist, or user confirmation."""
+    import urllib.parse
+
+    try:
+        parsed = urllib.parse.urlparse(url if url.startswith(("http://", "https://")) else f"https://{url}")
+        domain = (parsed.hostname or parsed.netloc or "").strip().lower()
+    except Exception:
+        domain = ""
+
+    if not domain:
+        return True, ""
+
+    try:
+        from core.settings_store import SettingsStore
+    except ImportError:
+        from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
+
+    store = SettingsStore()
+    settings = store.load_web_security_settings()
+    policy = settings.get("policy", "ask")
+    allowed = {d.strip().lower() for d in settings.get("allowed_domains", [])}
+    denied = {d.strip().lower() for d in settings.get("denied_domains", [])}
+
+    # 1. Check if explicitly denied
+    if domain in denied or any(domain.endswith(f".{d}") for d in denied):
+        return False, f"⚠️ การเข้าถึงเว็บไซต์ '{domain}' ถูกปฏิเสธตามนโยบายความปลอดภัย (Denied by security policy)"
+
+    # 2. Check if allow_all policy or in allowed whitelist
+    if policy == "allow_all":
+        return True, ""
+
+    if domain in allowed or any(domain.endswith(f".{d}") for d in allowed):
+        return True, ""
+
+    # 3. If policy is deny_all
+    if policy == "deny_all":
+        return False, f"⚠️ การเข้าถึงเว็บไซต์ '{domain}' ถูกปฏิเสธ (Web access disabled by policy: deny_all)"
+
+    # 4. If policy is 'ask', invoke permission handler if available
+    if _WEB_PERMISSION_HANDLER is not None:
+        try:
+            is_granted = _WEB_PERMISSION_HANDLER(domain, url, action)
+            if is_granted:
+                return True, ""
+            else:
+                return False, f"⚠️ ผู้ใช้ไม่อนุญาตให้ AI เข้าถึงเว็บไซต์ '{domain}' ({url})"
+        except Exception as ex:
+            return False, f"Error checking permission for '{domain}': {ex}"
+
+    # Default fallback if no interactive handler registered
+    return True, ""
+
+
 def _builtin_fetch_web(url: str, max_length: int = 8000) -> str:
     """Fetch content of a webpage, parse and extract clean readable text."""
     import urllib.request
@@ -340,6 +403,11 @@ def _builtin_fetch_web(url: str, max_length: int = 8000) -> str:
     url = url.strip()
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
+
+    # Security check
+    allowed, err_msg = check_web_permission(url, action="เปิดอ่านเนื้อหาหน้าเว็บ")
+    if not allowed:
+        return err_msg
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -679,6 +747,11 @@ def _builtin_http_request(url: str, method: str = "GET", headers: Optional[dict[
         url = "https://" + url
 
     method = method.strip().upper()
+
+    # Security check
+    allowed, err_msg = check_web_permission(url, action=f"ส่ง HTTP Request ({method})")
+    if not allowed:
+        return err_msg
     req_headers = {
         "User-Agent": "MAX-AI-Agent/1.0",
         "Accept": "*/*",

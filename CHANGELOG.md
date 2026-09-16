@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Web Access Security Guard & Domain Verification (`/security`, `/domains`)**: Interactive domain permission guard prompting users before AI accesses external websites (`fetch_web_content`, `http_request`), with choices to Allow once, Deny, Always allow domain, or Allow all.
 - **GitHub Specialist Skill & Tools (`github_search_repos`, `github_get_repo`, `github_read_file`, `github_list_issues`, `github_clone_repo`)**: Added tools #27 to #31 and [`skills/github-specialist`](file:///skills/github-specialist/SKILL.md) for full Git Flow, GitHub REST API, repository inspection, remote file reading, and CI/CD workflow automation.
 - **AI Image Generation Tool (`generate_image`, `/image`, `/img`)**: Tool #25 enabling high-resolution image creation (Flux, Turbo, DALL-E) directly saved to disk with zero-config fallback.
 - **AI Video Generation Tool (`generate_video`, `/video`, `/vid`)**: Tool #26 enabling AI-driven short video and animation synthesis (Wan2.1 / MP4) with instant preview.

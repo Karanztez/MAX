@@ -21,7 +21,7 @@ if _ROOT not in sys.path:
 
 try:
     from core.ai_client import AIClient
-    from core.mcp_manager import MCPManager
+    from core.mcp_manager import MCPManager, set_web_permission_handler
     from core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile
     from core.settings_store import SettingsStore
     from core.skill_manager import SkillManager
@@ -35,7 +35,7 @@ try:
     )
 except (ImportError, ModuleNotFoundError):
     from src.core.ai_client import AIClient  # type: ignore[no-redef]
-    from src.core.mcp_manager import MCPManager  # type: ignore[no-redef]
+    from src.core.mcp_manager import MCPManager, set_web_permission_handler  # type: ignore[no-redef]
     from src.core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile  # type: ignore[no-redef]
     from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
     from src.core.skill_manager import SkillManager  # type: ignore[no-redef]
@@ -90,10 +90,43 @@ class MaxTerminalApp:
         self.settings_store = SettingsStore()
         self.skill_manager = SkillManager()
         self.mcp_manager = MCPManager()
+        set_web_permission_handler(self._handle_web_permission)
         self.is_first_run = not self.settings_store.has_saved_key()
         self.profiles, self.selected_profile_id = self.settings_store.load_provider_settings(default_profiles())
         self.history: list[dict[str, Any]] = []
         self.active_profile = self._get_active_profile()
+
+    def _handle_web_permission(self, domain: str, url: str, action: str) -> bool:
+        """Interactive prompt in CLI to grant, deny, or whitelist web access."""
+        safe_print(color(f"\n🔒 [ความปลอดภัย] AI ร้องขอการเข้าถึงเว็บไซต์ภายนอก", Colors.BOLD + Colors.YELLOW))
+        safe_print(f"• กิจกรรม: {action}")
+        safe_print(f"• URL: {url}")
+        safe_print(f"• โดเมน: {color(domain, Colors.CYAN + Colors.BOLD)}")
+        safe_print(color("กรุณาเลือกการอนุญาต:", Colors.BOLD))
+        safe_print(f"  [1] {color('ยอมรับครั้งนี้ (Allow once)', Colors.GREEN)}")
+        safe_print(f"  [2] {color('ไม่อนุญาต (Deny / Cancel)', Colors.RED)}")
+        safe_print(f"  [3] {color(f'ยอมรับเว็บนี้เสมอ (Always allow {domain})', Colors.CYAN)}")
+        safe_print(f"  [4] {color('อนุญาตทุกเว็บตลอดไป (Always allow all)', Colors.HEADER)}")
+
+        try:
+            choice = input(color("\nเลือก [1-4 / y / n] (ค่าเริ่มต้น 1): ", Colors.BOLD + Colors.CYAN)).strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            return False
+
+        if choice in {"2", "n", "no", "deny"}:
+            safe_print(color(f"❌ ปฏิเสธการเข้าถึง {domain}\n", Colors.RED))
+            return False
+        elif choice in {"3", "always", "whitelist"}:
+            self.settings_store.add_allowed_domain(domain)
+            safe_print(color(f"✅ บันทึก '{domain}' ในรายการที่อนุญาตเสมอเรียบร้อยแล้ว\n", Colors.GREEN))
+            return True
+        elif choice in {"4", "all"}:
+            self.settings_store.save_web_security_settings(policy="allow_all")
+            safe_print(color(f"✅ เปิดโหมดอนุญาตทุกเว็บตลอดไป (Allow all domains) เรียบร้อยแล้ว\n", Colors.GREEN))
+            return True
+        else:
+            safe_print(color(f"✅ อนุญาตการเข้าถึง {domain} ชั่วคราว (ครั้งนี้)\n", Colors.GREEN))
+            return True
 
     def _get_active_profile(self) -> dict[str, Any]:
         for p in self.profiles:
@@ -425,10 +458,59 @@ class MaxTerminalApp:
                 safe_print(color(f"\n{res}", Colors.GREEN if not res.startswith("Error") else Colors.RED))
             return True
 
+        elif action in {"/security", "/domains", "/web"}:
+            sec = self.settings_store.load_web_security_settings()
+            sub = parts[1].lower() if len(parts) > 1 else ""
+
+            if sub == "allow" and len(parts) > 2:
+                dom = parts[2].strip().lower()
+                self.settings_store.add_allowed_domain(dom)
+                safe_print(color(f"✅ เพิ่มโดเมน '{dom}' เข้า Whitelist เรียบร้อยแล้ว", Colors.GREEN))
+                return True
+            elif sub == "deny" and len(parts) > 2:
+                dom = parts[2].strip().lower()
+                self.settings_store.add_denied_domain(dom)
+                safe_print(color(f"🚫 เพิ่มโดเมน '{dom}' เข้า Denylist เรียบร้อยแล้ว", Colors.RED))
+                return True
+            elif sub in {"policy", "mode"} and len(parts) > 2:
+                new_pol = parts[2].strip().lower()
+                if new_pol in {"ask", "allow_all", "deny_all"}:
+                    self.settings_store.save_web_security_settings(policy=new_pol)
+                    safe_print(color(f"✅ เปลี่ยนนโยบายความปลอดภัยเป็น: {new_pol}", Colors.GREEN))
+                else:
+                    safe_print(color("❌ นโยบายต้องเป็น 'ask', 'allow_all', หรือ 'deny_all'", Colors.RED))
+                return True
+
+            policy_str = sec.get("policy", "ask")
+            allowed_list = sec.get("allowed_domains", [])
+            denied_list = sec.get("denied_domains", [])
+
+            safe_print(color("\n🔒 นโยบายความปลอดภัยการเข้าถึงเว็บไซต์ (Web Access Security):", Colors.BOLD))
+            safe_print(f"• โหมดปัจจุบัน (Policy): {color(policy_str, Colors.CYAN + Colors.BOLD)} (ตัวเลือก: ask / allow_all / deny_all)")
+            safe_print(color(f"\n🌐 โดเมนที่อนุญาต (Allowed Whitelist: {len(allowed_list)} โดเมน):", Colors.BOLD))
+            for d in allowed_list:
+                is_def = d in self.settings_store.DEFAULT_TRUSTED_DOMAINS
+                tag = color("[ค่าเริ่มต้น]", Colors.DIM) if is_def else color("[ผู้ใช้กำหนด]", Colors.GREEN)
+                safe_print(f"  • {d} {tag}")
+
+            if denied_list:
+                safe_print(color(f"\n🚫 โดเมนที่ถูกบล็อก (Denylist: {len(denied_list)} โดเมน):", Colors.BOLD))
+                for d in denied_list:
+                    safe_print(f"  • {d} {color('[บล็อก]', Colors.RED)}")
+
+            safe_print(f"""
+{color('คำสั่งจัดการความปลอดภัย:', Colors.BOLD)}
+  {color('/security policy <ask|allow_all|deny_all>', Colors.CYAN)} - สลับโหมดความปลอดภัย
+  {color('/security allow <domain>', Colors.CYAN)}               - เพิ่มโดเมนเข้า Whitelist
+  {color('/security deny <domain>', Colors.CYAN)}                - บล็อกโดเมนไม่ให้ AI เข้าถึง
+""")
+            return True
+
         elif action == "/help":
             safe_print(f"""
 {color("คำสั่งที่ใช้งานได้ (Terminal Commands):", Colors.BOLD)}
   {color('/setup', Colors.CYAN)}                  - ตัวช่วยเลือกผู้ให้บริการ & โมเดล (โหมด 1-2-3-4)
+  {color('/security', Colors.CYAN)}               - ตรวจสอบ/จัดการสิทธิ์การเข้าถึงเว็บไซต์ (Web Security)
   {color('/image <prompt>', Colors.CYAN)}        - สร้างรูปภาพ AI (Flux / Turbo / DALL-E) บันทึกลงเครื่อง
   {color('/video <prompt>', Colors.CYAN)}        - สร้างคลิปวิดีโอ AI (Wan2.1 / MP4) บันทึกลงเครื่อง
   {color('/export [path]', Colors.CYAN)}          - บีบอัดและส่งออกโปรเจกต์ไปยังโฟลเดอร์ Download ของมือถือ/เครื่อง

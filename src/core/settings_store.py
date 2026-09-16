@@ -199,3 +199,95 @@ class SettingsStore:
         payload["skipped_version"] = version.strip()
         self.path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
+    DEFAULT_TRUSTED_DOMAINS = [
+        "github.com",
+        "api.github.com",
+        "raw.githubusercontent.com",
+        "duckduckgo.com",
+        "html.duckduckgo.com",
+        "pollinations.ai",
+        "image.pollinations.ai",
+        "video.pollinations.ai",
+    ]
+
+    def load_web_security_settings(self) -> dict[str, Any]:
+        """Load web security preferences (policy, allowed_domains, denied_domains)."""
+        defaults = {
+            "policy": "ask",  # "ask", "allow_all", "deny_all"
+            "allowed_domains": list(self.DEFAULT_TRUSTED_DOMAINS),
+            "denied_domains": [],
+        }
+        if not self.path.exists():
+            return defaults
+        try:
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+            sec = payload.get("web_security", {})
+            if isinstance(sec, dict):
+                policy = sec.get("policy", "ask")
+                if policy not in {"ask", "allow_all", "deny_all"}:
+                    policy = "ask"
+                raw_allowed = sec.get("allowed_domains", [])
+                allowed = list(set(self.DEFAULT_TRUSTED_DOMAINS + [d.strip().lower() for d in raw_allowed if isinstance(d, str) and d.strip()]))
+                raw_denied = sec.get("denied_domains", [])
+                denied = [d.strip().lower() for d in raw_denied if isinstance(d, str) and d.strip()]
+                return {
+                    "policy": policy,
+                    "allowed_domains": allowed,
+                    "denied_domains": denied,
+                }
+            return defaults
+        except Exception:
+            return defaults
+
+    def save_web_security_settings(
+        self,
+        allowed_domains: Optional[list[str]] = None,
+        denied_domains: Optional[list[str]] = None,
+        policy: Optional[str] = None,
+    ) -> None:
+        """Persist web security preferences without altering DPAPI credentials."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        payload: dict[str, Any] = {}
+        if self.path.exists():
+            try:
+                payload = json.loads(self.path.read_text(encoding="utf-8"))
+            except Exception:
+                payload = {}
+
+        current = payload.get("web_security", {})
+        if not isinstance(current, dict):
+            current = {}
+
+        if policy is not None:
+            current["policy"] = policy if policy in {"ask", "allow_all", "deny_all"} else "ask"
+        if allowed_domains is not None:
+            current["allowed_domains"] = sorted(list({d.strip().lower() for d in allowed_domains if d.strip()}))
+        if denied_domains is not None:
+            current["denied_domains"] = sorted(list({d.strip().lower() for d in denied_domains if d.strip()}))
+
+        payload["web_security"] = current
+        self.path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def add_allowed_domain(self, domain: str) -> None:
+        """Add a domain to the user's permanent allowlist."""
+        d = domain.strip().lower()
+        if not d:
+            return
+        settings = self.load_web_security_settings()
+        allowed = set(settings.get("allowed_domains", []))
+        allowed.add(d)
+        denied = [x for x in settings.get("denied_domains", []) if x != d]
+        self.save_web_security_settings(allowed_domains=list(allowed), denied_domains=denied)
+
+    def add_denied_domain(self, domain: str) -> None:
+        """Add a domain to the user's permanent denylist."""
+        d = domain.strip().lower()
+        if not d:
+            return
+        settings = self.load_web_security_settings()
+        denied = set(settings.get("denied_domains", []))
+        denied.add(d)
+        allowed = [x for x in settings.get("allowed_domains", []) if x != d and x not in self.DEFAULT_TRUSTED_DOMAINS]
+        self.save_web_security_settings(allowed_domains=allowed, denied_domains=list(denied))
+
+
