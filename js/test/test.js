@@ -3,6 +3,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   MaxAgent,
   MaxSession,
@@ -20,9 +21,12 @@ import {
 
 console.log("🧪 Running MAX AI JavaScript SDK Tests...");
 
-// 1. Version test
-assert.equal(VERSION, "1.0.2");
-console.log("✅ VERSION matched: 1.0.2");
+// 1. Version test — keep the runtime export synchronized with the npm manifest.
+const packageJson = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8")
+);
+assert.equal(VERSION, packageJson.version);
+console.log(`✅ VERSION matched package.json: ${VERSION}`);
 
 // 2. Agent Initialization
 const agent = new MaxAgent({
