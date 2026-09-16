@@ -26,6 +26,7 @@ try:
     from core.screen_manager import Screen, ScreenManager
     from core.settings_store import SettingsStore
     from core.skill_manager import SkillManager
+    from core.mcp.builtins.workspace_tools import set_screen_manager
     from core.updater import (
         APP_VERSION,
         check_github_release,
@@ -41,6 +42,10 @@ except (ImportError, ModuleNotFoundError):
     from src.core.screen_manager import Screen, ScreenManager  # type: ignore[no-redef]
     from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
     from src.core.skill_manager import SkillManager  # type: ignore[no-redef]
+    try:
+        from src.core.mcp.builtins.workspace_tools import set_screen_manager  # type: ignore[no-redef,import-not-found]
+    except Exception:
+        set_screen_manager = None  # type: ignore[assignment]
     from src.core.updater import (  # type: ignore[no-redef]
         APP_VERSION,
         check_github_release,
@@ -100,12 +105,8 @@ class MaxTerminalApp:
         # Initialize MAX Virtual Screen & Pipeline Manager
         self.screen_manager = ScreenManager()
         self.screen_manager.active_screen.model = self.active_profile.get("model", "")
-        try:
-            from core.mcp.builtins.workspace_tools import set_screen_manager
-            set_screen_manager(self.screen_manager)
-        except Exception:
+        if set_screen_manager is not None:
             try:
-                from src.core.mcp.builtins.workspace_tools import set_screen_manager
                 set_screen_manager(self.screen_manager)
             except Exception:
                 pass

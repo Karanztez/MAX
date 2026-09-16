@@ -2,19 +2,40 @@
 tests/test_screen_manager.py — Unit tests for MAX Screen Manager, linked pipeline, and CLI screen commands.
 """
 
+import sys
+from pathlib import Path
 import unittest
 from unittest.mock import MagicMock, patch
 
-from src.core.screen_manager import Screen, ScreenManager
-from src.core.mcp.builtins.workspace_tools import (
-    get_screen_manager,
-    set_screen_manager,
-    _builtin_screen_list,
-    _builtin_screen_create,
-    _builtin_screen_switch,
-    _builtin_screen_link,
-)
-from src.cli import MaxTerminalApp
+_root = str(Path(__file__).resolve().parent.parent)
+_src = str(Path(__file__).resolve().parent.parent / "src")
+if _src not in sys.path:
+    sys.path.insert(0, _src)
+if _root not in sys.path:
+    sys.path.insert(0, _root)
+
+try:
+    from core.screen_manager import Screen, ScreenManager
+    from core.mcp.builtins.workspace_tools import (
+        get_screen_manager,
+        set_screen_manager,
+        _builtin_screen_list,
+        _builtin_screen_create,
+        _builtin_screen_switch,
+        _builtin_screen_link,
+    )
+    from cli import MaxTerminalApp
+except (ImportError, ModuleNotFoundError):
+    from src.core.screen_manager import Screen, ScreenManager  # type: ignore[import-not-found,no-redef]
+    from src.core.mcp.builtins.workspace_tools import (  # type: ignore[import-not-found,no-redef]
+        get_screen_manager,
+        set_screen_manager,
+        _builtin_screen_list,
+        _builtin_screen_create,
+        _builtin_screen_switch,
+        _builtin_screen_link,
+    )
+    from src.cli import MaxTerminalApp  # type: ignore[import-not-found,no-redef]
 
 
 class TestScreenManager(unittest.TestCase):
