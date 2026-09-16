@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import re
+import urllib.error
 import urllib.parse
+import urllib.request
 from typing import Any, Callable, Optional
 
 try:
@@ -21,18 +23,27 @@ def set_web_permission_handler(handler: Optional[Callable[[str, str, str], bool]
     _web_permission_handler = handler
 
 
+def _get_settings_store() -> Any:
+    try:
+        from core.settings_store import SettingsStore
+        return SettingsStore()
+    except (ImportError, ModuleNotFoundError):
+        pass
+
+    try:
+        from ...settings_store import SettingsStore
+        return SettingsStore()
+    except (ImportError, ModuleNotFoundError):
+        return None
+
+
 def check_web_permission(url: str, action: str = "read") -> tuple[bool, str]:
     """Check whether access to a given URL/domain is permitted by security settings or user."""
     try:
-        try:
-            from core.settings_store import SettingsStore
-        except (ImportError, ModuleNotFoundError):
-            try:
-                from src.core.settings_store import SettingsStore
-            except (ImportError, ModuleNotFoundError):
-                from ...settings_store import SettingsStore
+        store = _get_settings_store()
+        if not store:
+            return True, "No settings store available"
 
-        store = SettingsStore()
         domain = urllib.parse.urlparse(url).netloc.split(":")[0].lower()
         if not domain:
             domain = url.split("/")[0].split(":")[0].lower()
@@ -71,9 +82,6 @@ def check_web_permission(url: str, action: str = "read") -> tuple[bool, str]:
 
 def _builtin_search_web(query: str, count: int = 5) -> str:
     """Search DuckDuckGo HTML without external dependencies."""
-    import urllib.request
-    import urllib.error
-
     url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -114,9 +122,6 @@ def _builtin_search_web(query: str, count: int = 5) -> str:
 
 def _builtin_fetch_web(url: str, max_length: int = 8000) -> str:
     """Fetch URL and convert HTML to readable plain text."""
-    import urllib.request
-    import urllib.error
-
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "https://" + url
 
@@ -164,9 +169,6 @@ def _builtin_fetch_web(url: str, max_length: int = 8000) -> str:
 def _builtin_http_request(url: str, method: str = "GET", headers: Optional[dict[str, str]] = None,
                           body: Optional[str] = None, timeout_seconds: int = 15) -> str:
     """Execute generic HTTP request."""
-    import urllib.request
-    import urllib.error
-
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "https://" + url
 

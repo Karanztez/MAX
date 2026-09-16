@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import urllib.error
 import urllib.parse
+import urllib.request
 from typing import Any, Optional
 
 try:
@@ -22,9 +24,6 @@ def _normalize_github_repo_name(repo: str) -> str:
 
 def _builtin_github_search_repos(query: str, count: int = 5, sort: str = "stars") -> str:
     """Search GitHub public repositories via GitHub REST API."""
-    import urllib.request
-    import urllib.error
-
     q = query.strip()
     if not q:
         return "Error: Query cannot be empty"
@@ -69,9 +68,6 @@ def _builtin_github_search_repos(query: str, count: int = 5, sort: str = "stars"
 
 def _builtin_github_get_repo(repo: str) -> str:
     """Fetch repository metadata and latest release from GitHub API."""
-    import urllib.request
-    import urllib.error
-
     repo_name = _normalize_github_repo_name(repo)
     if not repo_name or "/" not in repo_name:
         return "Error: กรุณาระบุชื่อ repo ในรูปแบบ 'owner/repo' (เช่น 'Karanztez/MAX')"
@@ -129,9 +125,6 @@ def _builtin_github_get_repo(repo: str) -> str:
 
 def _builtin_github_read_file(repo: str, file_path: str, branch: str = "") -> str:
     """Read source code or file directly from a GitHub repository without cloning."""
-    import urllib.request
-    import urllib.error
-
     repo_name = _normalize_github_repo_name(repo)
     clean_path = file_path.strip().lstrip("/")
     if not repo_name or not clean_path:
@@ -167,9 +160,6 @@ def _builtin_github_read_file(repo: str, file_path: str, branch: str = "") -> st
 
 def _builtin_github_list_issues(repo: str, state: str = "open", count: int = 5) -> str:
     """List issues and pull requests for a repository."""
-    import urllib.request
-    import urllib.error
-
     repo_name = _normalize_github_repo_name(repo)
     if not repo_name or "/" not in repo_name:
         return "Error: กรุณาระบุชื่อ repo ในรูปแบบ 'owner/repo'"

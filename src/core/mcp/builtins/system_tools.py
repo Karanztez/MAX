@@ -132,6 +132,7 @@ def _builtin_run_command(command: str, timeout_seconds: int = 30, background: bo
         return f"🚀 คำสั่งถูกรันใน Background แล้ว (Task ID: {task_id})\nใช้คำสั่ง task_status(task_id='{task_id}') เพื่อตรวจสอบสถานะและผลลัพธ์"
 
     # Synchronous execution
+    proc: Optional[subprocess.Popen[str]] = None
     try:
         proc = subprocess.Popen(
             cmd,
@@ -155,7 +156,8 @@ def _builtin_run_command(command: str, timeout_seconds: int = 30, background: bo
             res_parts.append(f"\n--- STDERR ---\n{err}")
         return "\n".join(res_parts)
     except subprocess.TimeoutExpired:
-        proc.kill()
+        if proc is not None:
+            proc.kill()
         return f"Error: Command timed out after {timeout_seconds} seconds."
     except Exception as ex:
         return f"Error executing command: {ex}"
@@ -170,6 +172,7 @@ def _builtin_run_python_code(code: str, timeout_seconds: int = 30) -> str:
         f.write(code)
         temp_script = f.name
 
+    proc: Optional[subprocess.Popen[str]] = None
     try:
         proc = subprocess.Popen(
             [sys.executable, temp_script],
@@ -192,7 +195,8 @@ def _builtin_run_python_code(code: str, timeout_seconds: int = 30) -> str:
             res_parts.append(f"\n--- Errors ---\n{err}")
         return "\n".join(res_parts)
     except subprocess.TimeoutExpired:
-        proc.kill()
+        if proc is not None:
+            proc.kill()
         return f"Error: Python code execution timed out after {timeout_seconds}s."
     except Exception as ex:
         return f"Error running Python code: {ex}"

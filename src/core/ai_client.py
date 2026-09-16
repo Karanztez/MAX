@@ -377,7 +377,7 @@ class AIClient:
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc_id,
-                    "content": str(tool_result),
+                    "content": tool_result,
                 })
 
         updated = list(history)
