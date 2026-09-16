@@ -11,7 +11,10 @@ import urllib.error
 import urllib.request
 from typing import Any, Optional
 
-from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_TITLE, FONT_MONO
+try:
+    from ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_TITLE, FONT_MONO
+except (ImportError, ModuleNotFoundError):
+    from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_TITLE, FONT_MONO  # type: ignore[no-redef]
 
 
 class HealthCheckDialog(tk.Toplevel):

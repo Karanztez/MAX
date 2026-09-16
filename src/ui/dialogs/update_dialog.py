@@ -10,13 +10,18 @@ from tkinter import ttk, messagebox
 import webbrowser
 from typing import Optional
 
-from src.core.updater import UpdateInfo, APP_VERSION, download_file, is_frozen_exe, apply_exe_update_and_restart
-from src.core.settings_store import SettingsStore
-from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_HDR, FONT_MONO
+try:
+    from core.updater import UpdateInfo, APP_VERSION, download_file, is_frozen_exe, apply_exe_update_and_restart
+    from core.settings_store import SettingsStore
+    from ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_HDR, FONT_MONO
+except (ImportError, ModuleNotFoundError):
+    from src.core.updater import UpdateInfo, APP_VERSION, download_file, is_frozen_exe, apply_exe_update_and_restart  # type: ignore[no-redef]
+    from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
+    from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_HDR, FONT_MONO  # type: ignore[no-redef]
 
 
 class UpdateDialog(tk.Toplevel):
-    def __init__(self, parent: tk.Tk, info: UpdateInfo, settings_store: Optional[SettingsStore] = None) -> None:
+    def __init__(self, parent: tk.Misc, info: UpdateInfo, settings_store: Optional[SettingsStore] = None) -> None:
         super().__init__(parent)
         self.info = info
         self.settings_store = settings_store or SettingsStore()
