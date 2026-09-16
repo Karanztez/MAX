@@ -46,7 +46,18 @@ max-gui
 
 ## 📚 WIKI & คู่มือการใช้งาน (Documentation & User Guide)
 
-### 🪟 Windows Wiki & Guide
+เอกสารคู่มือการใช้งานฉบับสมบูรณ์ถูกแยกเป็นหมวดหมู่ในโฟลเดอร์ [`wiki/`](wiki/) และ [GitHub Wiki](https://github.com/Karanztez/MAX/wiki):
+
+- 🪟 **[Windows User Guide & Technical Manual](wiki/Windows-Guide.md)** — การใช้งาน Desktop GUI, Screen Snip, DPAPI, Terminal CLI
+- 🐧 **[Linux & Server User Guide & Technical Manual](wiki/Linux-Guide.md)** — การใช้งานบน Ubuntu/Debian/Arch/VPS, Headless Agent, Cron, Security Guard
+- 📱 **[Android (Termux) Mobile Workflow Guide](wiki/Android-Termux-Guide.md)** — การติดตั้งบนมือถือ, การ Export ZIP ส่งตรงเข้าเครื่อง
+- 🛠 **[Agent Tools Reference (34+ Built-in Tools)](wiki/Agent-Tools-Reference.md)** — เจาะลึกเครื่องมืออัตโนมัติทั้งหมด (Code Diff, Git, Web, System, Media)
+- 🧩 **[Skills Management Guide](wiki/Skills-Management.md)** — วิธีการติดตั้งสกิลอัตโนมัติจาก GitHub (`/skills`, `install_skill`)
+- 🛡 **[Web Domain Security Guard](wiki/Web-Security.md)** — ระบบคัดกรองความปลอดภัยและการขอสิทธิ์เข้าถึงเว็บไซต์ภายนอก
+
+---
+
+### 🪟 สรุปการใช้งาน Windows (Quick Summary)
 
 MAX บน Windows รองรับทั้งหน้าต่าง **Desktop GUI ที่ล้ำสมัย** และ **Terminal CLI** ใน PowerShell / Windows Terminal / CMD พร้อมระบบความปลอดภัยระดับฮาร์ดแวร์ด้วย Windows DPAPI
 
