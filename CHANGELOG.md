@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Software License & Terms of Use (`LICENSE`)**: Added Non-Commercial Proprietary License with permission-only commercial use (ไม่อนุญาตให้นำไปจำหน่ายหรือใช้ในเชิงพาณิชย์โดยไม่ได้รับอนุญาตเป็นลายลักษณ์อักษรจากเจ้าของลิขสิทธิ์ Karanztez).
 - **Gemini / Antigravity Style Code Diff & Editing Engine (`replace_file_content`, `diff_engine`)**: Added precision surgical code replacement tools and colorized terminal/GUI unified diff renderer showing line-by-line green `+` additions and red `-` deletions with line numbers and diff blocks.
 - **Modular MCP Package Architecture (`src/core/mcp/`)**: Decomposed the monolithic 2,100+ line `mcp_manager.py` into dedicated, maintainable sub-modules (`builtins/file_tools.py`, `web_tools.py`, `git_tools.py`, `media_tools.py`, `system_tools.py`, `skill_tools.py`, `connection.py`, `diff_engine.py`, `manager.py`) while preserving 100% backward-compatible facade re-exports and resolving Pyrefly import diagnostics.
 - **Autonomous Skill Management (`install_skill`, `remove_skill`, `list_skills`, `/skills`, `/skill`)**: MCP Tools #32, #33, #34 and CLI commands enabling AI and users to install skills directly from GitHub (`owner/repo`, tree/blob URLs, raw SKILL.md links) or markdown text, delete skills safely, and list all installed skills with instant hot-reloading without restarting.

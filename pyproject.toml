@@ -8,6 +8,7 @@ version = "1.0.1"
 description = "MAX AI Agent — Multi-Provider AI Assistant & Autonomous Tool Runner"
 readme = "README.md"
 requires-python = ">=3.8"
+license = { text = "Proprietary / Non-Commercial (Commercial License Required)" }
 authors = [{ name = "Karanztez" }]
 dependencies = [
     "Pillow>=10.0.0",

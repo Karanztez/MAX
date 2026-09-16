@@ -1,0 +1,49 @@
+MAX SOFTWARE LICENSE AGREEMENT
+==============================
+Copyright (c) 2026 Karanztez (https://github.com/Karanztez/MAX)
+All Rights Reserved.
+
+[ ภาษาไทย / Thai Version ]
+--------------------------------------------------------------------------------
+ข้อตกลงและเงื่อนไขการใช้งานซอฟต์แวร์ MAX (MaxPlus AI)
+
+1. การอนุญาตให้ใช้งานส่วนบุคคล (Personal & Non-Commercial Use):
+   - อนุญาตให้บุคคลทั่วไปนำซอฟต์แวร์ ซอร์สโค้ด และเอกสารที่เกี่ยวข้องไปใช้งาน ศึกษา ดัดแปลง หรือทดสอบ เพื่อการใช้งานส่วนตัว การศึกษา วิจัย และการพัฒนาที่ไม่แสวงหากำไรได้โดยไม่คิดค่าใช้จ่าย
+
+2. ข้อห้ามการใช้งานเชิงพาณิชย์และการจำหน่าย (Commercial Restriction):
+   - **ไม่อนุญาตให้นำซอฟต์แวร์นี้ ส่วนหนึ่งส่วนใดของซอฟต์แวร์ หรือผลงานดัดแปลง ไปจำหน่าย จำหน่ายต่อ (Resell) ให้เช่า (Lease) ให้สิทธิ์ช่วง (Sublicense) หรือคิดค่าบริการในเชิงพาณิชย์ทุกกรณี**
+   - **เว้นแต่จะได้รับอนุญาตเป็นลายลักษณ์อักษร (Explicit Written Authorization / Commercial License) จากเจ้าของลิขสิทธิ์ (Karanztez) ก่อนเท่านั้น**
+
+3. การขอสิทธิ์ใช้งานเชิงพาณิชย์ (Commercial Licensing Inquiry):
+   - หากประสงค์จะนำไปใช้ในองค์กรธุรกิจ ให้บริการเชิงพาณิชย์ หรือจัดจำหน่าย กรุณาติดต่อขอสิทธิ์โดยตรงกับเจ้าของลิขสิทธิ์ผ่านทาง GitHub: https://github.com/Karanztez
+
+4. ข้อจำกัดความรับผิดชอบ (Disclaimer of Warranty):
+   - ซอฟต์แวร์นี้จัดทำขึ้นและส่งมอบให้ "ตามสภาพที่เป็นอยู่" (AS IS) โดยไม่มีการรับประกันความเสียหายใดๆ ไม่ว่าโดยชัดแจ้งหรือโดยปริยาย
+
+
+[ English Version ]
+--------------------------------------------------------------------------------
+TERMS AND CONDITIONS FOR USING MAX (MaxPlus AI)
+
+1. Non-Commercial & Personal Use Grant:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to use,
+   study, copy, modify, and merge the Software for personal, non-commercial,
+   research, and educational purposes only.
+
+2. Commercial Restriction & Prohibition of Sale:
+   **THE SOFTWARE AND ANY DERIVATIVE WORKS MAY NOT BE SOLD, RESOLD, RENTED,
+   LEASED, SUBLICENSED, REDISTRIBUTED FOR A FEE, OR USED FOR ANY COMMERCIAL
+   PURPOSE OR MONETIZED SERVICE WITHOUT EXPLICIT PRIOR WRITTEN PERMISSION
+   AND COMMERCIAL LICENSING FROM THE COPYRIGHT HOLDER (Karanztez).**
+
+3. Commercial Licensing:
+   For commercial use, enterprise deployment, or distribution inquiries, please
+   contact the copyright holder directly at: https://github.com/Karanztez
+
+4. Disclaimer of Warranty:
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE.

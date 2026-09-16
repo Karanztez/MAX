@@ -11,6 +11,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Karanztez",
+    license="Non-Commercial / Proprietary",
     url="https://github.com/Karanztez/MAX",
     packages=find_packages(include=["src", "src.*"]),
     include_package_data=True,
