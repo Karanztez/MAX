@@ -67,5 +67,5 @@ python scripts/bump_version.py --notes v1.0.2
      ```
 4. GitHub Actions Bot จะทำการ:
    - รัน Unit Tests อัตโนมัติ (`python -m unittest discover -s tests`)
-   - บิลด์ไฟล์ `MaxPlusAI.exe` ผ่าน PyInstaller
+   - บิลด์ไฟล์ `MAX.exe` ผ่าน PyInstaller
    - ดึง Release Notes จาก `CHANGELOG.md` และสร้าง GitHub Release พร้อมแนบไฟล์ `.exe` สำหรับดาวน์โหลดและให้ออโต้ฮัปเดตเตอร์ของโปรแกรมดึงไปใช้งาน

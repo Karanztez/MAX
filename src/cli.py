@@ -521,9 +521,9 @@ class MaxTerminalApp:
                 safe_print(color(f"กรุณาดาวน์โหลดด้วยตนเองที่: {info.html_url}", Colors.CYAN))
                 return
 
-            safe_print(color(f"\n⬇️ กำลังดาวน์โหลด {info.asset_name or 'MaxPlusAI.exe'}...", Colors.CYAN))
+            safe_print(color(f"\n⬇️ กำลังดาวน์โหลด {info.asset_name or 'MAX.exe'}...", Colors.CYAN))
             temp_dir = tempfile.mkdtemp()
-            temp_exe = os.path.join(temp_dir, "MaxPlusAI_new.exe")
+            temp_exe = os.path.join(temp_dir, "MAX_new.exe")
 
             def on_progress(downloaded: int, total: int) -> None:
                 if total > 0:

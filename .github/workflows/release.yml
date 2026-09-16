@@ -128,24 +128,24 @@ jobs:
           python -m pip install --upgrade build
           python -m build
 
-      - name: Build MaxPlusAI.exe
-        run: python -m PyInstaller --clean --noconfirm MaxPlusAI.spec
+      - name: Build MAX.exe
+        run: python -m PyInstaller --clean --noconfirm MAX.spec
 
       - name: Smoke test packaged GUI startup
         shell: pwsh
         run: |
-          $process = Start-Process -FilePath "dist/MaxPlusAI.exe" -PassThru
+          $process = Start-Process -FilePath "dist/MAX.exe" -PassThru
           Start-Sleep -Seconds 10
           if ($process.HasExited) {
-            throw "MaxPlusAI.exe exited during GUI startup with code $($process.ExitCode)"
+            throw "MAX.exe exited during GUI startup with code $($process.ExitCode)"
           }
           Stop-Process -Id $process.Id -Force
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MaxPlusAI-Windows
-          path: dist/MaxPlusAI.exe
+          name: MAX-Windows
+          path: dist/MAX.exe
           if-no-files-found: error
 
       - name: Publish GitHub Release
@@ -160,7 +160,7 @@ jobs:
           $notesFile = "release_notes.md"
           $hasNotes = Test-Path $notesFile
 
-          $assets = @("dist/MaxPlusAI.exe")
+          $assets = @("dist/MAX.exe")
           Get-ChildItem -Path "dist" -Filter "*.whl" | ForEach-Object { $assets += $_.FullName }
           Get-ChildItem -Path "dist" -Filter "*.tar.gz" | ForEach-Object { $assets += $_.FullName }
 
@@ -181,10 +181,11 @@ jobs:
 
           # Write Step Summary
           $summary = @"
-          ## 🚀 MAX AI Release $tag Published Successfully!
+          ## 🚀 MAX for AI Release $tag Published Successfully!
           - **Tag:** $tag
-          - **Executable:** [MaxPlusAI.exe](https://github.com/${{ github.repository }}/releases/download/$tag/MaxPlusAI.exe)
+          - **Executable:** [MAX.exe](https://github.com/${{ github.repository }}/releases/download/$tag/MAX.exe)
           - **Python Packages:** Wheel (.whl) and Source (.tar.gz) attached to release
+          - **npm Package:** [@karanztez/max-ai](https://github.com/${{ github.repository }}/packages)
           - **All project files updated and pushed back to main automatically by Bot!**
           "@
           $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append

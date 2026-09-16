@@ -1,1 +1,1 @@
-"""Tcl/Tk files are collected explicitly by MaxPlusAI.spec."""
+"""Tcl/Tk files are collected explicitly by MAX.spec."""

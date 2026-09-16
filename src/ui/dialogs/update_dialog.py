@@ -262,7 +262,7 @@ class UpdateDialog(tk.Toplevel):
 
     def _download_worker(self) -> None:
         try:
-            fd, tmp_path = tempfile.mkstemp(suffix="_MaxPlusAI_new.exe")
+            fd, tmp_path = tempfile.mkstemp(suffix="_MAX_new.exe")
             os.close(fd)
             self._temp_dest = tmp_path
 

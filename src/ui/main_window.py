@@ -701,7 +701,7 @@ class MaxPlusGUI(tk.Tk):
             tray_mod.MenuItem("จับภาพหน้าจอ", lambda _i, _m: self._tray_queue.put("capture")),
             tray_mod.MenuItem("ออก", lambda _i, _m: self._tray_queue.put("exit")),
         )
-        self._tray = tray_mod.Icon("MaxPlusAI", icon_image, "MAX", menu)
+        self._tray = tray_mod.Icon("MAX", icon_image, "MAX", menu)
         threading.Thread(target=self._tray.run, daemon=True).start()
 
     def _poll_tray_queue(self) -> None:
