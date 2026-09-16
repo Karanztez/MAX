@@ -13,18 +13,34 @@ import urllib.error
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.core.provider_profiles import (
-    default_profiles,
-    GPT_IMAGE_MODELS,
-    NAI_IMAGE_MODELS,
-    GROK_IMAGE_MODELS,
-)
-from src.core.mcp.builtins.media_tools import (
-    _get_image_provider_credentials,
-    _generate_image_via_maxplus,
-    _builtin_generate_image,
-    get_media_tools,
-)
+try:
+    from core.provider_profiles import (
+        default_profiles,
+        GPT_IMAGE_MODELS,
+        NAI_IMAGE_MODELS,
+        GROK_IMAGE_MODELS,
+    )
+    import core.mcp.builtins.media_tools as media_tools_mod
+    from core.mcp.builtins.media_tools import (
+        _get_image_provider_credentials,
+        _generate_image_via_maxplus,
+        _builtin_generate_image,
+        get_media_tools,
+    )
+except (ImportError, ModuleNotFoundError):
+    from src.core.provider_profiles import (  # type: ignore[no-redef]
+        default_profiles,
+        GPT_IMAGE_MODELS,
+        NAI_IMAGE_MODELS,
+        GROK_IMAGE_MODELS,
+    )
+    import src.core.mcp.builtins.media_tools as media_tools_mod  # type: ignore[no-redef]
+    from src.core.mcp.builtins.media_tools import (  # type: ignore[no-redef]
+        _get_image_provider_credentials,
+        _generate_image_via_maxplus,
+        _builtin_generate_image,
+        get_media_tools,
+    )
 
 
 class TestMediaProviders(unittest.TestCase):
@@ -66,67 +82,64 @@ class TestMediaProviders(unittest.TestCase):
         grok_url, _ = _get_image_provider_credentials("grok-image")
         self.assertEqual(grok_url, "https://api.maxplus-ai.cc/grok-image/v1")
 
-    @patch("src.core.mcp.builtins.media_tools._get_image_provider_credentials")
     @patch("urllib.request.urlopen")
-    def test_generate_image_via_maxplus_b64(self, mock_urlopen, mock_creds):
-        mock_creds.return_value = ("https://api.maxplus-ai.cc/gpt-image/v1", "test-key-123")
-        import base64
+    def test_generate_image_via_maxplus_b64(self, mock_urlopen):
+        with patch.object(media_tools_mod, "_get_image_provider_credentials", return_value=("https://api.maxplus-ai.cc/gpt-image/v1", "test-key-123")):
+            import base64
 
-        fake_png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
-        fake_b64 = base64.b64encode(fake_png).decode("ascii")
+            fake_png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+            fake_b64 = base64.b64encode(fake_png).decode("ascii")
 
-        mock_resp = MagicMock()
-        mock_resp.read.return_value = json.dumps({
-            "data": [{"b64_json": fake_b64}]
-        }).encode("utf-8")
-        mock_resp.__enter__.return_value = mock_resp
-        mock_urlopen.return_value = mock_resp
+            mock_resp = MagicMock()
+            mock_resp.read.return_value = json.dumps({
+                "data": [{"b64_json": fake_b64}]
+            }).encode("utf-8")
+            mock_resp.__enter__.return_value = mock_resp
+            mock_urlopen.return_value = mock_resp
 
-        out_path = Path(self.temp_dir.name) / "test_out.png"
-        ok, msg = _generate_image_via_maxplus(
-            provider="gpt-image",
-            prompt="A futuristic flying car",
-            out_file=out_path,
-            width=1024,
-            height=1024,
-            model="dall-e-3",
-        )
+            out_path = Path(self.temp_dir.name) / "test_out.png"
+            ok, msg = _generate_image_via_maxplus(
+                provider="gpt-image",
+                prompt="A futuristic flying car",
+                out_file=out_path,
+                width=1024,
+                height=1024,
+                model="dall-e-3",
+            )
 
-        self.assertTrue(ok)
-        self.assertIn("สร้างรูปภาพระดับพรีเมียมสำเร็จด้วย GPT-IMAGE", msg)
-        self.assertTrue(out_path.exists())
-        self.assertEqual(out_path.read_bytes(), fake_png)
+            self.assertTrue(ok)
+            self.assertIn("สร้างรูปภาพระดับพรีเมียมสำเร็จด้วย GPT-IMAGE", msg)
+            self.assertTrue(out_path.exists())
+            self.assertEqual(out_path.read_bytes(), fake_png)
 
-    @patch("src.core.mcp.builtins.media_tools._generate_image_via_maxplus")
-    def test_builtin_generate_image_auto_provider_dispatch(self, mock_gen):
-        mock_gen.return_value = (True, "Mocked GPT-IMAGE Success")
-        out_path = os.path.join(self.temp_dir.name, "gpt.png")
+    def test_builtin_generate_image_auto_provider_dispatch(self):
+        with patch.object(media_tools_mod, "_generate_image_via_maxplus", return_value=(True, "Mocked GPT-IMAGE Success")) as mock_gen:
+            out_path = os.path.join(self.temp_dir.name, "gpt.png")
 
-        res = _builtin_generate_image(
-            prompt="A lovely cute kitten",
-            output_path=out_path,
-            model="dall-e-3",
-            provider="auto",
-        )
-        self.assertIn("Mocked GPT-IMAGE Success", res)
-        mock_gen.assert_called_once()
-        args, kwargs = mock_gen.call_args
-        self.assertEqual(kwargs.get("provider"), "gpt-image")
+            res = _builtin_generate_image(
+                prompt="A lovely cute kitten",
+                output_path=out_path,
+                model="dall-e-3",
+                provider="auto",
+            )
+            self.assertIn("Mocked GPT-IMAGE Success", res)
+            mock_gen.assert_called_once()
+            args, kwargs = mock_gen.call_args
+            self.assertEqual(kwargs.get("provider"), "gpt-image")
 
-    @patch("src.core.mcp.builtins.media_tools._generate_image_via_maxplus")
-    def test_builtin_generate_image_nai_dispatch(self, mock_gen):
-        mock_gen.return_value = (True, "Mocked NAI Success")
-        out_path = os.path.join(self.temp_dir.name, "anime.png")
+    def test_builtin_generate_image_nai_dispatch(self):
+        with patch.object(media_tools_mod, "_generate_image_via_maxplus", return_value=(True, "Mocked NAI Success")) as mock_gen:
+            out_path = os.path.join(self.temp_dir.name, "anime.png")
 
-        res = _builtin_generate_image(
-            prompt="Anime magical girl, sparkling eyes",
-            output_path=out_path,
-            model="nai-diffusion-3",
-            provider="auto",
-        )
-        self.assertIn("Mocked NAI Success", res)
-        args, kwargs = mock_gen.call_args
-        self.assertEqual(kwargs.get("provider"), "nai-image")
+            res = _builtin_generate_image(
+                prompt="Anime magical girl, sparkling eyes",
+                output_path=out_path,
+                model="nai-diffusion-3",
+                provider="auto",
+            )
+            self.assertIn("Mocked NAI Success", res)
+            args, kwargs = mock_gen.call_args
+            self.assertEqual(kwargs.get("provider"), "nai-image")
 
     def test_media_tools_registered_with_new_options(self):
         tools = get_media_tools()
