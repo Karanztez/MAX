@@ -329,6 +329,79 @@ class TestSkillsAndMCP(unittest.TestCase):
         self.assertEqual(history[-1]["content"], "สรุปผลลัพธ์จากการค้นหาสำเร็จ")
         self.assertTrue(any("กำลังประมวลผลและสรุปคำตอบ" in log for log in logs))
 
+    def test_ai_client_fallback_summary_when_model_silent(self):
+        """Verify that if LLM returns empty/trivial content even after synthesis, a structured log report is generated."""
+        client = AIClient(api_key="mock-key")
+
+        # Mock round returning a tool call
+        client._call_response = lambda messages, **kwargs: {  # type: ignore
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {
+                        "name": "connect_api",
+                        "arguments": json.dumps({"url": "https://api.github.com"}),
+                    },
+                }
+            ],
+        }
+        # Mock synthesis call returning empty string
+        client._call = lambda msgs, **kwargs: ""  # type: ignore
+
+        history, logs = client.chat_with_tools(
+            user_message="ลองเชื่อมต่อ api ให้หน่อย",
+            tools=[{"type": "function", "function": {"name": "connect_api"}}],
+            tool_executor=lambda name, args: "HTTP Error 403: rate limit exceeded",
+            max_tool_rounds=1,
+        )
+
+        reply = history[-1]["content"]
+        self.assertNotEqual(reply, "(ดำเนินการเสร็จสิ้น)")
+        self.assertIn("รายงานสรุปผลการดำเนินการ", reply)
+        self.assertIn("connect_api", reply)
+        self.assertIn("HTTP Error 403", reply)
+
+    def test_ai_client_loop_prevention(self):
+        """Verify that repeating the same tool call with identical arguments triggers loop break."""
+        client = AIClient(api_key="mock-key")
+
+        # Keep returning identical tool call
+        client._call_response = lambda messages, **kwargs: {  # type: ignore
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {
+                    "id": "call_dup",
+                    "type": "function",
+                    "function": {
+                        "name": "failing_tool",
+                        "arguments": json.dumps({"key": "val"}),
+                    },
+                }
+            ],
+        }
+        client._call = lambda msgs, **kwargs: "สรุป: ตรวจพบข้อผิดพลาดและหยุดการวนซ้ำเรียบร้อย"  # type: ignore
+
+        executed_count = 0
+        def counting_executor(name, args):
+            nonlocal executed_count
+            executed_count += 1
+            return "Connection timeout"
+
+        history, logs = client.chat_with_tools(
+            user_message="test loop",
+            tools=[{"type": "function", "function": {"name": "failing_tool"}}],
+            tool_executor=counting_executor,
+            max_tool_rounds=20,
+        )
+
+        # Loop breaker should stop long before 20 rounds (around 4 calls)
+        self.assertLessEqual(executed_count, 5)
+        self.assertEqual(history[-1]["content"], "สรุป: ตรวจพบข้อผิดพลาดและหยุดการวนซ้ำเรียบร้อย")
+
 
 if __name__ == "__main__":
     unittest.main()

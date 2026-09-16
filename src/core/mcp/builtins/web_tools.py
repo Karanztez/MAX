@@ -133,6 +133,31 @@ def _builtin_fetch_web(url: str, max_length: int = 8000) -> str:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MAX-AI-Agent/1.0",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
+
+    # GitHub Repository Optimization:
+    # Instead of pulling heavy HTML navigation/cookies, directly fetch raw README.md
+    # and repository overview so the AI gets clean API, SDK, and usage instructions instantly.
+    gh_match = re.match(r"^https?://github\.com/([^/]+)/([^/?#]+)/?$", url)
+    if gh_match:
+        owner, repo = gh_match.group(1), gh_match.group(2)
+        if repo.endswith(".git"):
+            repo = repo[:-4]
+        for branch in ["main", "master"]:
+            raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/README.md"
+            try:
+                raw_req = urllib.request.Request(raw_url, headers=headers, method="GET")
+                with urllib.request.urlopen(raw_req, timeout=10) as raw_resp:
+                    readme_text = raw_resp.read().decode("utf-8", errors="replace")
+                    if len(readme_text) > max_length:
+                        readme_text = readme_text[:max_length] + f"\n\n... [Truncated, total README length was {len(readme_text)} chars]"
+                    return (
+                        f"GitHub Repository: {owner}/{repo}\n"
+                        f"Target URL: {url}\n"
+                        f"Direct Raw README.md Documentation:\n\n{readme_text}"
+                    )
+            except Exception:
+                continue
+
     try:
         req = urllib.request.Request(url, headers=headers, method="GET")
         with urllib.request.urlopen(req, timeout=15) as resp:

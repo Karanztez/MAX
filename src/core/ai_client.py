@@ -396,7 +396,11 @@ class AIClient:
             updated.append({"role": "assistant", "content": reply})
             return updated, logs
 
-        while round_idx < max_tool_rounds:
+        call_history: list[str] = []
+        repeat_counts: dict[str, int] = {}
+        should_break_loop = False
+
+        while round_idx < max_tool_rounds and not should_break_loop:
             round_idx += 1
             assistant_msg = self._call_response(
                 messages,
@@ -421,6 +425,10 @@ class AIClient:
                 except Exception:
                     tool_args = {}
 
+                sig = f"{tool_name}:{json.dumps(tool_args, sort_keys=True, ensure_ascii=False)}"
+                call_history.append(sig)
+                repeat_counts[sig] = repeat_counts.get(sig, 0) + 1
+
                 status_msg = f"🔧 เรียกใช้เครื่องมือ: {tool_name}({json.dumps(tool_args, ensure_ascii=False)})"
                 logs.append(status_msg)
                 if on_status:
@@ -428,11 +436,20 @@ class AIClient:
 
                 if tool_executor:
                     try:
-                        tool_result = tool_executor(tool_name, tool_args)
+                        tool_result = str(tool_executor(tool_name, tool_args))
                     except Exception as ex:
                         tool_result = f"Error executing {tool_name}: {ex}"
                 else:
                     tool_result = f"Tool executor not provided for {tool_name}"
+
+                # Loop prevention & cognitive guidance
+                if repeat_counts[sig] >= 2:
+                    tool_result += (
+                        "\n\n[คำแนะนำจากระบบ: ตรวจพบว่าคุณเรียกใช้เครื่องมือนี้ด้วยพารามิเตอร์เดิมซ้ำ "
+                        "กรุณาวิเคราะห์ผลลัพธ์หรือข้อผิดพลาดข้างต้น ปรับเปลี่ยนแนวทาง หรือตอบสรุปผลลัพธ์ให้ผู้ใช้โดยตรง หลีกเลี่ยงการวนลูปซ้ำ]"
+                    )
+                if repeat_counts[sig] >= 4:
+                    should_break_loop = True
 
                 result_status = f"-> ผลลัพธ์ {tool_name}: {tool_result[:300]}"
                 logs.append(result_status)
@@ -444,27 +461,94 @@ class AIClient:
                     "content": tool_result,
                 })
 
-        if not final_content.strip():
-            # If the tool loop exhausted max_tool_rounds or ended with empty content,
-            # invoke a synthesis call without tools so the AI summarizes all tool results
-            # and gives the user a complete, helpful answer.
-            status_msg = "🧠 กำลังประมวลผลและสรุปคำตอบ..."
+        # Ensure a comprehensive final answer is produced after tool execution
+        is_empty_or_trivial = (
+            not final_content.strip()
+            or final_content.strip() in {"(ดำเนินการเสร็จสิ้น)", "เสร็จสิ้น", "done", "Done", "ok", "OK"}
+        )
+
+        if is_empty_or_trivial and round_idx > 0:
+            status_msg = "🧠 กำลังประมวลผลและสรุปคำตอบให้ผู้ใช้..."
             logs.append(status_msg)
             if on_status:
                 on_status(status_msg)
+
+            # Build a clean synthesis conversation for final output
+            synthesis_messages = [m for m in messages if m.get("content") or m.get("tool_calls")]
+            while synthesis_messages and synthesis_messages[-1].get("role") == "assistant" and not synthesis_messages[-1].get("content") and not synthesis_messages[-1].get("tool_calls"):
+                synthesis_messages.pop()
+
+            synthesis_prompt = (
+                "การเรียกใช้เครื่องมือเพื่อค้นหา/ตรวจสอบเสร็จสิ้นแล้ว กรุณาสรุปและตอบคำถามของผู้ใช้อย่างครบถ้วน ละเอียด และชัดเจนเป็นภาษาไทย:\n"
+                "1. สรุปสิ่งที่ได้ตรวจสอบ สืบค้น หรือดำเนินการไปแล้วทีละขั้นตอน\n"
+                "2. สรุปข้อมูลที่ค้นพบ ผลการเชื่อมต่อ หรือไฟล์/โค้ดที่สร้างหรือแก้ไข (พร้อมระบุชื่อไฟล์และโค้ดตัวอย่างถ้ามี)\n"
+                "3. หากมีข้อผิดพลาด (Error) หรือไม่สามารถเชื่อมต่อได้ ให้ระบุสาเหตุอย่างตรงไปตรงมา และแนะนำวิธีแก้ไข\n"
+                "4. ให้คำตอบสุดท้ายที่สมบูรณ์และนำไปใช้ต่อได้ทันที (ห้ามตอบสั้นหรือเว้นว่างเด็ดขาด)"
+            )
+            synthesis_messages.append({"role": "user", "content": synthesis_prompt})
+
             try:
-                final_content = self._call(
-                    messages,
+                synth_reply = self._call(
+                    synthesis_messages,
                     temperature=temperature,
                     max_tokens=max_tokens,
                 )
+                if synth_reply and synth_reply.strip():
+                    final_content = synth_reply.strip()
             except Exception as ex:
-                final_content = f"ดำเนินการเครื่องมือเสร็จสิ้น แต่ไม่สามารถสรุปคำตอบได้: {ex}"
+                logs.append(f"Synthesis call failed: {ex}")
+
+        # If still empty or trivial, generate a detailed fallback summary from logs
+        if not final_content or not final_content.strip() or final_content.strip() in {"(ดำเนินการเสร็จสิ้น)", "เสร็จสิ้น"}:
+            final_content = self._generate_fallback_summary(logs, user_message)
 
         updated = list(history)
         updated.append(user_msg)
-        updated.append({"role": "assistant", "content": final_content or "(ดำเนินการเสร็จสิ้น)"})
+        updated.append({"role": "assistant", "content": final_content})
         return updated, logs
+
+    @staticmethod
+    def _generate_fallback_summary(logs: list[str], user_message: Union[str, list[dict[str, Any]]]) -> str:
+        """Construct a structured and helpful summary from execution logs when the LLM returns empty."""
+        actions: list[dict[str, str]] = []
+        for l in logs:
+            if l.startswith("🔧 เรียกใช้เครื่องมือ:"):
+                act = l.replace("🔧 เรียกใช้เครื่องมือ:", "").strip()
+                actions.append({"action": act, "result": ""})
+            elif l.startswith("-> ผลลัพธ์") and actions:
+                res = l.replace("-> ผลลัพธ์", "").strip()
+                actions[-1]["result"] = res
+
+        if not actions:
+            return "ดำเนินการตามคำสั่งเสร็จสิ้นเรียบร้อยแล้วครับ หากต้องการให้ดำเนินการเพิ่มเติมในส่วนใด สามารถแจ้งได้ทันทีครับ"
+
+        lines = [
+            "### 🛠️ รายงานสรุปผลการดำเนินการ (Execution Summary)",
+            f"ระบบได้ดำเนินการไปทั้งหมด **{len(actions)} ขั้นตอน** รายละเอียดดังนี้:\n",
+        ]
+        has_errors = False
+        for i, item in enumerate(actions, 1):
+            act = item["action"]
+            res = item["result"]
+            is_err = "error" in res.lower() or "fail" in res.lower() or "🚫" in res
+            if is_err:
+                has_errors = True
+                status_badge = "❌ [พบข้อผิดพลาด]"
+            else:
+                status_badge = "✔ [สำเร็จ]"
+
+            lines.append(f"{i}. **เครื่องมือ:** `{act}`")
+            lines.append(f"   - **สถานะ:** {status_badge}")
+            if res:
+                lines.append(f"   - **รายละเอียด:** {res[:250]}")
+            lines.append("")
+
+        if has_errors:
+            lines.append("⚠️ **ข้อสังเกต:** มีบางคำสั่งหรือการเชื่อมต่อพบข้อผิดพลาด กรุณาตรวจสอบรายละเอียดข้างต้น หรือระบุพารามิเตอร์เพิ่มเติมเพื่อให้ระบบช่วยดำเนินการแก้ไขต่อไปครับ")
+        else:
+            lines.append("✅ การดำเนินการของเครื่องมือเสร็จสิ้นสมบูรณ์ หากต้องการให้ปรับแต่งหรือเขียนโค้ดเพิ่มเติม สามารถสั่งการต่อได้ทันทีครับ")
+
+        return "\n".join(lines)
 
     def list_models(self) -> list:
         """ดูรายการ models ที่ใช้งานได้"""

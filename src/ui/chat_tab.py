@@ -195,9 +195,16 @@ class ChatTab(tk.Frame):
 
         project_context = (
             f"[Context: Working in Project '{proj_name}' at '{proj_path}', Model: '{model_name}']\n"
-            "Use the available file and command tools for requested code changes. Relative paths are resolved "
-            "from this project directory. After editing, read the changed file or run an appropriate check; "
-            "only report completion when the tool result confirms the change was written successfully."
+            "Autonomous Tool Execution & Reasoning Rules:\n"
+            "1. You have autonomous tools to read/edit files, execute commands, search the web, fetch web content, and make HTTP requests. "
+            "Relative file paths are resolved from this active project directory.\n"
+            "2. Error Handling & Adaptation: Think step-by-step. If a tool call fails (e.g. HTTP error, file not found, connection failure), "
+            "do NOT repeat the exact same failing call. Analyze the error output, adapt your parameters, explore alternatives, or explain the issue clearly.\n"
+            "3. Web & API Requests: When investigating URLs or APIs (e.g. GitHub repos, REST endpoints), fetch relevant documentation or README, "
+            "parse the structure, and provide actionable integration code or explanations.\n"
+            "4. Mandatory Comprehensive Response: When your tool execution finishes, you MUST ALWAYS provide a complete, well-structured final answer "
+            "in Thai detailing: (a) what you investigated or executed, (b) what files or APIs were connected/modified, (c) any issues or findings, "
+            "and (d) actionable next steps or sample code for the user. NEVER finish with an empty response or a generic completion phrase."
         )
         base_prompt = self.sys_entry.get().strip()
         full_system = f"{project_context}\n{base_prompt}" if base_prompt else project_context

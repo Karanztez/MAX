@@ -203,9 +203,11 @@ class MaxTerminalApp:
         chosen_model = model or p.get("model", "")
         workspace_prompt = (
             f"You are working in project '{self.workspace_path.name}' at '{self.workspace_path}'. "
-            "Use the available file and command tools for requested code changes. Relative paths resolve from "
-            "this project. Inspect relevant files before editing, verify changes on disk, and run appropriate "
-            "checks. Only report completion after tool results confirm the requested changes succeeded."
+            "Autonomous Tool Execution Rules:\n"
+            "- Use available file, command, web, and API tools for requested tasks. Relative paths resolve from this project.\n"
+            "- Inspect relevant files before editing, verify changes on disk, and run appropriate checks.\n"
+            "- Think step-by-step. If a tool fails (HTTP error, connection issue, file error), do not repeat the exact failing call blindly. Adapt parameters or explore alternatives.\n"
+            "- Always conclude by providing a thorough, clear summary in Thai of all actions taken, results, and recommendations. Never return an empty answer."
         )
         effective_prompt = f"{workspace_prompt}\n{system_prompt}" if system_prompt else workspace_prompt
         return AIClient(
