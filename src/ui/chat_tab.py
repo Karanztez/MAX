@@ -8,6 +8,7 @@ from pathlib import Path
 import threading
 import time
 import tkinter as tk
+from tkinter import filedialog, messagebox
 from typing import Any, Optional, Union, TYPE_CHECKING
 
 # Ensure workspace root is in sys.path when executed directly
