@@ -1,22 +1,38 @@
-name: Build Windows release
+name: Build & Auto-Release Windows EXE
 
 on:
   push:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version Bump Type (patch, minor, major)"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      custom_notes:
+        description: "Custom Release Notes (Leave blank to auto-read from CHANGELOG.md / Git log)"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  bump_and_release:
     runs-on: windows-latest
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -24,13 +40,55 @@ jobs:
           python-version: "3.12"
           cache: pip
 
+      - name: Configure Git Bot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Compute Next Version & Extract Notes
+        id: version_step
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $bumpType = "${{ github.event.inputs.bump_type }}"
+            if (-not $bumpType) { $bumpType = "patch" }
+            $newTag = python scripts/bump_version.py --bump $bumpType
+            Write-Host "Auto-bumped version to: $newTag"
+
+            # Check for custom notes or extract from markdown/git
+            $customNotes = @"
+          ${{ github.event.inputs.custom_notes }}
+          "@.Trim()
+
+            if ($customNotes) {
+              Set-Content -Path "release_notes.md" -Value $customNotes -Encoding utf8
+            } else {
+              python scripts/bump_version.py --notes $newTag --output-file "release_notes.md"
+            }
+
+            git add src/__init__.py src/core/updater.py src/core/mcp_manager.py setup.py pyproject.toml
+            $hasDiff = git diff --staged --name-only
+            if ($hasDiff) {
+              git commit -m "chore(release): bump version to $newTag [skip ci]"
+              git tag -a "$newTag" -m "Release $newTag"
+              git push origin main --follow-tags
+              git push origin "$newTag" --force
+            }
+            "RELEASE_TAG=$newTag" | Out-File -FilePath $env:GITHUB_ENV -Append
+          } else {
+            $tag = "${{ github.ref_name }}"
+            python scripts/bump_version.py --set-version $tag
+            python scripts/bump_version.py --notes $tag --output-file "release_notes.md"
+            "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pyinstaller
           python -m pip install -e .
 
-      - name: Check Python source
+      - name: Check Python source syntax
         run: python -m py_compile main.py src/cli.py
 
       - name: Run unit tests
@@ -47,14 +105,28 @@ jobs:
           if-no-files-found: error
 
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          if (gh release view "${{ github.ref_name }}" 2>$null) {
-            gh release upload "${{ github.ref_name }}" "dist/MaxPlusAI.exe" --clobber
-          } else {
-            gh release create "${{ github.ref_name }}" "dist/MaxPlusAI.exe" --generate-notes --title "MAX ${{ github.ref_name }}"
-          }
+          $tag = $env:RELEASE_TAG
+          if (-not $tag) { $tag = "${{ github.ref_name }}" }
+          Write-Host "Publishing release for tag: $tag"
 
+          $notesFile = "release_notes.md"
+          $hasNotes = Test-Path $notesFile
+
+          if (gh release view "$tag" 2>$null) {
+            Write-Host "Release $tag exists, uploading artifact..."
+            if ($hasNotes) {
+              gh release edit "$tag" --notes-file "$notesFile" --title "MAX $tag"
+            }
+            gh release upload "$tag" "dist/MaxPlusAI.exe" --clobber
+          } else {
+            Write-Host "Creating new release $tag..."
+            if ($hasNotes) {
+              gh release create "$tag" "dist/MaxPlusAI.exe" --notes-file "$notesFile" --title "MAX $tag"
+            } else {
+              gh release create "$tag" "dist/MaxPlusAI.exe" --generate-notes --title "MAX $tag"
+            }
+          }
