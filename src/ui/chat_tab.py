@@ -22,15 +22,27 @@ try:
 except ImportError:
     _PIL_OK = False
 
-from src.core.ai_client import AIClient
-from src.core.mcp_manager import MCPManager
-from src.core.skill_manager import SkillManager
-from src.ui.clipboard import img_to_b64, copy_image_to_clipboard, read_clipboard_text
-from src.ui.dialogs.crop_dialog import CropDialog
-from src.ui.dialogs.skill_picker_dialog import SkillPickerDialog
-from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY
-from src.ui.widgets.message_bubble import MessageBubble
-from src.ui.widgets.scrollable_frame import ScrollableFrame
+try:
+    from core.ai_client import AIClient
+    from core.mcp_manager import MCPManager
+    from core.skill_manager import SkillManager
+    from ui.clipboard import img_to_b64, copy_image_to_clipboard, read_clipboard_text
+    from ui.dialogs.crop_dialog import CropDialog
+    from ui.dialogs.skill_picker_dialog import SkillPickerDialog
+    from ui.themes import T, FONT, FONT_BOLD, FONT_TINY
+    from ui.widgets.message_bubble import MessageBubble
+    from ui.widgets.scrollable_frame import ScrollableFrame
+except (ImportError, ModuleNotFoundError):
+    from src.core.ai_client import AIClient  # type: ignore[no-redef]
+    from src.core.mcp_manager import MCPManager  # type: ignore[no-redef]
+    from src.core.skill_manager import SkillManager  # type: ignore[no-redef]
+    from src.ui.clipboard import img_to_b64, copy_image_to_clipboard, read_clipboard_text  # type: ignore[no-redef]
+    from src.ui.dialogs.crop_dialog import CropDialog  # type: ignore[no-redef]
+    from src.ui.dialogs.skill_picker_dialog import SkillPickerDialog  # type: ignore[no-redef]
+    from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY  # type: ignore[no-redef]
+    from src.ui.widgets.message_bubble import MessageBubble  # type: ignore[no-redef]
+    from src.ui.widgets.scrollable_frame import ScrollableFrame  # type: ignore[no-redef]
+
 
 
 class ChatTab(tk.Frame):
@@ -206,7 +218,7 @@ class ChatTab(tk.Frame):
             if isinstance(clip, list):
                 for p in clip:
                     try:
-                        return Image.open(str(p))
+                        return Image.open(p)
                     except Exception:
                         continue
         except Exception as ex:

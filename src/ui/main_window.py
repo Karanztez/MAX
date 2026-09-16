@@ -24,17 +24,31 @@ except ImportError:
     pystray = None
     _TRAY_OK = False
 
-from src.core.provider_profiles import default_profiles, normalize_profiles
-from src.core.settings_store import SettingsStore
-from src.core.mcp_manager import MCPManager
-from src.core.updater import check_github_release, is_newer_version, APP_VERSION, UpdateInfo
-from src.ui.themes import T, DARK, LIGHT, FONT, FONT_TINY, FONT_TITLE, FONT_HDR
-from src.ui.chat_tab import ChatTab
-from src.ui.capture.screen_crop import ScreenCropOverlay
-from src.ui.dialogs.settings_dialog import SettingsDialog
-from src.ui.dialogs.mcp_dialog import MCPManagerDialog
-from src.ui.dialogs.update_dialog import UpdateDialog
-from src.ui.dialogs.health_dialog import HealthCheckDialog
+try:
+    from core.provider_profiles import default_profiles, normalize_profiles
+    from core.settings_store import SettingsStore
+    from core.mcp_manager import MCPManager
+    from core.updater import check_github_release, is_newer_version, APP_VERSION, UpdateInfo
+    from ui.themes import T, DARK, LIGHT, FONT, FONT_TINY, FONT_TITLE, FONT_HDR
+    from ui.chat_tab import ChatTab
+    from ui.capture.screen_crop import ScreenCropOverlay
+    from ui.dialogs.settings_dialog import SettingsDialog
+    from ui.dialogs.mcp_dialog import MCPManagerDialog
+    from ui.dialogs.update_dialog import UpdateDialog
+    from ui.dialogs.health_dialog import HealthCheckDialog
+except (ImportError, ModuleNotFoundError):
+    from src.core.provider_profiles import default_profiles, normalize_profiles  # type: ignore[no-redef]
+    from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
+    from src.core.mcp_manager import MCPManager  # type: ignore[no-redef]
+    from src.core.updater import check_github_release, is_newer_version, APP_VERSION, UpdateInfo  # type: ignore[no-redef]
+    from src.ui.themes import T, DARK, LIGHT, FONT, FONT_TINY, FONT_TITLE, FONT_HDR  # type: ignore[no-redef]
+    from src.ui.chat_tab import ChatTab  # type: ignore[no-redef]
+    from src.ui.capture.screen_crop import ScreenCropOverlay  # type: ignore[no-redef]
+    from src.ui.dialogs.settings_dialog import SettingsDialog  # type: ignore[no-redef]
+    from src.ui.dialogs.mcp_dialog import MCPManagerDialog  # type: ignore[no-redef]
+    from src.ui.dialogs.update_dialog import UpdateDialog  # type: ignore[no-redef]
+    from src.ui.dialogs.health_dialog import HealthCheckDialog  # type: ignore[no-redef]
+
 
 
 def _project_name() -> str:
