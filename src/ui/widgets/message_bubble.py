@@ -138,7 +138,7 @@ _SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇"
 
 
 class MessageBubble(tk.Frame):
-    def __init__(self, parent: tk.Widget, role: str, content: str,
+    def __init__(self, parent: tk.Misc, role: str, content: str,
                  bg_card: str, hdr_color: str,
                  img: Optional["Image.Image"] = None,
                  is_thinking: bool = False,

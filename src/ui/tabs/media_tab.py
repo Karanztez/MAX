@@ -33,7 +33,7 @@ class MediaViewerTab(tk.Frame):
 
     def __init__(
         self,
-        parent: tk.Widget,
+        parent: tk.Misc,
         file_path: str,
         title: Optional[str] = None,
         media_type: str = "image",
