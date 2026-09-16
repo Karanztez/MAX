@@ -20,12 +20,12 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 try:
-    from src.core.ai_client import AIClient
-    from src.core.mcp_manager import MCPManager
-    from src.core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile
-    from src.core.settings_store import SettingsStore
-    from src.core.skill_manager import SkillManager
-    from src.core.updater import (
+    from core.ai_client import AIClient
+    from core.mcp_manager import MCPManager
+    from core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile
+    from core.settings_store import SettingsStore
+    from core.skill_manager import SkillManager
+    from core.updater import (
         APP_VERSION,
         check_github_release,
         is_newer_version,
@@ -34,12 +34,12 @@ try:
         apply_exe_update_and_restart,
     )
 except (ImportError, ModuleNotFoundError):
-    from core.ai_client import AIClient  # type: ignore[no-redef]
-    from core.mcp_manager import MCPManager  # type: ignore[no-redef]
-    from core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile  # type: ignore[no-redef]
-    from core.settings_store import SettingsStore  # type: ignore[no-redef]
-    from core.skill_manager import SkillManager  # type: ignore[no-redef]
-    from core.updater import (  # type: ignore[no-redef]
+    from src.core.ai_client import AIClient  # type: ignore[no-redef]
+    from src.core.mcp_manager import MCPManager  # type: ignore[no-redef]
+    from src.core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile  # type: ignore[no-redef]
+    from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
+    from src.core.skill_manager import SkillManager  # type: ignore[no-redef]
+    from src.core.updater import (  # type: ignore[no-redef]
         APP_VERSION,
         check_github_release,
         is_newer_version,

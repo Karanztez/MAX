@@ -9,14 +9,15 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
-    from src.cli import MaxTerminalApp
-    from src.core.settings_store import SettingsStore
+    from cli import MaxTerminalApp
+    from core.settings_store import SettingsStore
 except (ImportError, ModuleNotFoundError):
-    from cli import MaxTerminalApp  # type: ignore[no-redef]
-    from core.settings_store import SettingsStore  # type: ignore[no-redef]
+    from src.cli import MaxTerminalApp  # type: ignore[no-redef]
+    from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
 
 
 class TestCli(unittest.TestCase):
