@@ -4,7 +4,9 @@ src/ui/main_window.py — MaxPlus AI Main Window and Application Runner
 
 import importlib
 import os
+from pathlib import Path
 import queue
+import sys
 import threading
 import time
 import tkinter as tk
@@ -445,12 +447,15 @@ class MaxPlusGUI(tk.Tk):
         if not file_path or not os.path.exists(file_path):
             return None
 
-        norm_path = os.path.abspath(file_path)
+        resolved_path = str(Path(file_path).resolve())
+        compare_key = resolved_path.lower() if sys.platform == "win32" else resolved_path
         for t in self._tabs:
             tab_path = getattr(t, "file_path", None)
-            if tab_path and os.path.abspath(tab_path) == norm_path:
-                self.notebook.select(t)
-                return t
+            if tab_path:
+                tab_resolved = str(Path(tab_path).resolve())
+                if (tab_resolved.lower() if sys.platform == "win32" else tab_resolved) == compare_key:
+                    self.notebook.select(t)
+                    return t
 
         def _on_close_media(m_tab: MediaViewerTab) -> None:
             if m_tab in self._tabs:
@@ -461,7 +466,7 @@ class MaxPlusGUI(tk.Tk):
 
         tab = MediaViewerTab(
             self.notebook,
-            file_path=norm_path,
+            file_path=resolved_path,
             title=title,
             media_type=media_type,
             prompt=prompt,
@@ -469,7 +474,7 @@ class MaxPlusGUI(tk.Tk):
         )
         self._tabs.append(tab)
 
-        base_name = os.path.basename(norm_path)
+        base_name = os.path.basename(resolved_path)
         icon = "🎨" if media_type == "image" else "🎬"
         tab_label = f" {icon} {base_name[:18]} "
 
