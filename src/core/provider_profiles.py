@@ -81,14 +81,15 @@ GROK_MODELS = [
 ]
 
 GPT_PRO_SUPREME_MODELS = [
-    "gpt-5.5",
-    "gpt-5.6-luna",
-    "gpt-5.6-terra",
-    "gpt-5.6-sol",
     "gpt-6-astra",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.5",
 ]
 
 OPENAI_MODELS = [
+    "gpt-6-astra",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-5.6-luna",
