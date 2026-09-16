@@ -436,7 +436,7 @@ class AIClient:
 
                 if tool_executor:
                     try:
-                        tool_result = str(tool_executor(tool_name, tool_args))
+                        tool_result = tool_executor(tool_name, tool_args)
                     except Exception as ex:
                         tool_result = f"Error executing {tool_name}: {ex}"
                 else:
