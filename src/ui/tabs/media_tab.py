@@ -383,7 +383,8 @@ class MediaViewerTab(tk.Frame):
         target_w = max(1, int(orig_w * self._zoom_factor))
         target_h = max(1, int(orig_h * self._zoom_factor))
 
-        resized = img.resize((target_w, target_h), Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.ANTIALIAS)
+        resample_mode = getattr(getattr(Image, "Resampling", Image), "LANCZOS", 1)
+        resized = img.resize((target_w, target_h), resample_mode)
         self._current_photo = ImageTk.PhotoImage(resized)
 
         self._canvas.delete("all")

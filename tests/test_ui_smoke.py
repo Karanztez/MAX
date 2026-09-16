@@ -9,10 +9,20 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.ui.main_window import MaxPlusGUI
-from src.ui.widgets.message_bubble import MessageBubble
-from src.ui.dialogs.settings_dialog import SettingsDialog
-from src.ui.themes import T, DARK, LIGHT
+try:
+    from ui.main_window import MaxPlusGUI
+    from ui.widgets.message_bubble import MessageBubble
+    from ui.dialogs.settings_dialog import SettingsDialog
+    from ui.dialogs.health_dialog import HealthCheckDialog
+    from ui.themes import T, DARK, LIGHT
+    from core.provider_profiles import default_profiles
+except (ImportError, ModuleNotFoundError):
+    from src.ui.main_window import MaxPlusGUI  # type: ignore[no-redef]
+    from src.ui.widgets.message_bubble import MessageBubble  # type: ignore[no-redef]
+    from src.ui.dialogs.settings_dialog import SettingsDialog  # type: ignore[no-redef]
+    from src.ui.dialogs.health_dialog import HealthCheckDialog  # type: ignore[no-redef]
+    from src.ui.themes import T, DARK, LIGHT  # type: ignore[no-redef]
+    from src.core.provider_profiles import default_profiles  # type: ignore[no-redef]
 
 
 class TestUISmoke(unittest.TestCase):
@@ -49,7 +59,6 @@ class TestUISmoke(unittest.TestCase):
         self.assertEqual(b_ai._content, "Here is the final answer:\n```python\nprint('hello')\n```")
 
     def test_settings_dialog_creation(self) -> None:
-        from src.core.provider_profiles import default_profiles
         profiles = default_profiles()
         saved = False
 
@@ -62,8 +71,6 @@ class TestUISmoke(unittest.TestCase):
         dlg.destroy()
 
     def test_health_dialog_creation(self) -> None:
-        from src.core.provider_profiles import default_profiles
-        from src.ui.dialogs.health_dialog import HealthCheckDialog
         profiles = default_profiles()
         dlg = HealthCheckDialog(self.root, profiles, profiles[0]["id"])
         self.assertIsNotNone(dlg)

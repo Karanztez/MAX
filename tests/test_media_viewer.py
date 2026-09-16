@@ -11,10 +11,16 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.ui.widgets.message_bubble import extract_media_items, MessageBubble
-from src.ui.tabs.media_tab import MediaViewerTab
-from src.ui.main_window import MaxPlusGUI
-from src.ui.themes import T
+try:
+    from ui.widgets.message_bubble import extract_media_items, MessageBubble
+    from ui.tabs.media_tab import MediaViewerTab
+    from ui.main_window import MaxPlusGUI
+    from ui.themes import T
+except (ImportError, ModuleNotFoundError):
+    from src.ui.widgets.message_bubble import extract_media_items, MessageBubble  # type: ignore[no-redef]
+    from src.ui.tabs.media_tab import MediaViewerTab  # type: ignore[no-redef]
+    from src.ui.main_window import MaxPlusGUI  # type: ignore[no-redef]
+    from src.ui.themes import T  # type: ignore[no-redef]
 
 try:
     from PIL import Image
