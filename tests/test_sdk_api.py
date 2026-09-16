@@ -14,6 +14,7 @@ if _ROOT not in sys.path:
 
 import max_ai  # type: ignore[import-not-found]
 from max_ai import MaxAgent, MaxSession, MaxTeam, Agent, Session, Team  # type: ignore[import-not-found]
+from max_ai.agent import AIClient  # type: ignore[import-not-found]
 
 
 class TestMaxAISDK(unittest.TestCase):
@@ -45,14 +46,14 @@ class TestMaxAISDK(unittest.TestCase):
         self.assertEqual(agent.temperature, 0.5)
         self.assertEqual(agent.max_tokens, 2048)
 
-    @patch("src.core.ai_client.AIClient._call_response")
+    @patch.object(AIClient, "_call_response")
     def test_agent_ask_sync(self, mock_call):
         mock_call.return_value = {"role": "assistant", "content": "Hello from Mock AI!"}
         reply = self.agent.ask("Hello")
         self.assertEqual(reply, "Hello from Mock AI!")
         self.assertTrue(mock_call.called)
 
-    @patch("src.core.ai_client.AIClient._call_response")
+    @patch.object(AIClient, "_call_response")
     def test_agent_ask_async(self, mock_call):
         mock_call.return_value = {"role": "assistant", "content": "Async Response"}
         
@@ -62,7 +63,7 @@ class TestMaxAISDK(unittest.TestCase):
         reply = asyncio.run(_run())
         self.assertEqual(reply, "Async Response")
 
-    @patch("src.core.ai_client.AIClient._call_response")
+    @patch.object(AIClient, "_call_response")
     def test_session_multi_turn_memory(self, mock_call):
         mock_call.side_effect = [
             {"role": "assistant", "content": "I am MAX AI."},
@@ -96,7 +97,7 @@ class TestMaxAISDK(unittest.TestCase):
         self.assertEqual(len(session.history), 4)
         self.assertEqual(session.history[-1]["content"], "msg 9")
 
-    @patch("src.core.ai_client.AIClient._call_response")
+    @patch.object(AIClient, "_call_response")
     def test_multi_agent_team_pipeline(self, mock_call):
         mock_call.side_effect = [
             {"role": "assistant", "content": "Architecture plan: 1. API 2. Database"},
@@ -119,7 +120,7 @@ class TestMaxAISDK(unittest.TestCase):
         self.assertEqual(results["steps"][1]["member_name"], "Dev")
         self.assertEqual(results["steps"][2]["member_name"], "QA")
 
-    @patch("src.core.ai_client.AIClient._call_response")
+    @patch.object(AIClient, "_call_response")
     def test_convenience_functions(self, mock_call):
         mock_call.return_value = {"role": "assistant", "content": "Convenience answer"}
         ans = max_ai.ask("test", api_key="key")
