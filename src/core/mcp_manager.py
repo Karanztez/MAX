@@ -777,6 +777,82 @@ def _builtin_base64_codec(text: str, action: str = "encode") -> str:
         return f"Base64 error: {ex}"
 
 
+def _builtin_export_to_download(source_path: str = ".", output_name: str = "") -> str:
+    """Compress and export project or files to user's standard Download directory (e.g. Android Termux /sdcard/Download or PC Downloads)."""
+    import shutil
+    import zipfile
+
+    src = Path(source_path or ".").resolve()
+    if not src.exists():
+        return f"Error: ไม่พบโฟลเดอร์หรือไฟล์ '{source_path}'"
+
+    # Search for accessible Download directory
+    download_dirs: list[Path] = []
+    # 1. Android Termux shared storage & sdcard paths
+    download_dirs.append(Path.home() / "storage" / "shared" / "Download")
+    download_dirs.append(Path("/sdcard/Download"))
+    download_dirs.append(Path("/storage/emulated/0/Download"))
+    download_dirs.append(Path("/storage/emulated/0/Download/MAX_Projects"))
+    # 2. Windows Downloads
+    if os.name == "nt":
+        download_dirs.append(Path.home() / "Downloads")
+        if "USERPROFILE" in os.environ:
+            download_dirs.append(Path(os.environ["USERPROFILE"]) / "Downloads")
+    # 3. Linux / macOS standard Downloads
+    download_dirs.append(Path.home() / "Downloads")
+    download_dirs.append(Path.home())
+
+    dest_dir: Optional[Path] = None
+    for d in download_dirs:
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            test_f = d / ".max_write_test"
+            test_f.write_text("ok", encoding="utf-8")
+            test_f.unlink()
+            dest_dir = d
+            break
+        except Exception:
+            continue
+
+    if not dest_dir:
+        dest_dir = Path.home()
+
+    name = output_name.strip()
+    if not name:
+        base_name = src.name if src.name and src.name not in {".", "/"} else "max_project"
+        name = f"{base_name}.zip"
+    elif not name.endswith(".zip"):
+        name += ".zip"
+
+    zip_path = dest_dir / name
+
+    try:
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            if src.is_file():
+                zf.write(src, arcname=src.name)
+            else:
+                for root, dirs, files in os.walk(src):
+                    dirs[:] = [d for d in dirs if d not in {".git", "__pycache__", "venv", ".venv", "build", "dist", "node_modules", ".gradle"}]
+                    for file in files:
+                        full_p = Path(root) / file
+                        rel_p = full_p.relative_to(src)
+                        zf.write(full_p, arcname=str(rel_p))
+
+        termux_hint = ""
+        if shutil.which("termux-open"):
+            termux_hint = f"\n💡 สามารถสั่ง 'termux-open \"{zip_path}\"' เพื่อเปิดหรือส่งต่อไฟล์ได้ทันที"
+
+        return (
+            f"📦 ส่งออกโปรเจกต์สำเร็จเรียบร้อยแล้ว!\n"
+            f"• ไฟล์ ZIP: {zip_path}\n"
+            f"• โฟลเดอร์ปลายทาง: {dest_dir}\n"
+            f"• คุณสามารถเปิดดูไฟล์นี้ได้ในแอพ 'จัดการไฟล์ (Files / My Files / Downloads)' บนมือถือได้ทันที{termux_hint}"
+        )
+    except Exception as ex:
+        return f"Error exporting project: {ex}"
+
+
+
 class MCPManager:
     """Central manager for MCP servers, built-in tools, and function calling integration."""
 
@@ -1228,6 +1304,26 @@ class MCPManager:
                 server_name="builtin",
             ),
             lambda args: _builtin_base64_codec(str(args.get("text", "")), action=str(args.get("action", "encode"))),
+        )
+
+        # 24. Export to Download
+        self.builtin_tools["export_to_download"] = (
+            MCPTool(
+                name="export_to_download",
+                description="บีบอัดและส่งออกโฟลเดอร์/โปรเจกต์ไปยังโฟลเดอร์ Download ของมือถือ (Android Termux) หรือเครื่อง เพื่อให้เปิดดูและแชร์ไฟล์ได้ทันที",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "source_path": {"type": "string", "description": "โฟลเดอร์หรือไฟล์ที่ต้องการส่งออก (ค่าเริ่มต้น . โฟลเดอร์ปัจจุบัน)", "default": "."},
+                        "output_name": {"type": "string", "description": "ชื่อไฟล์ ZIP ปลายทาง เช่น my-app.zip", "default": ""},
+                    },
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_export_to_download(
+                source_path=str(args.get("source_path", ".")),
+                output_name=str(args.get("output_name", "")),
+            ),
         )
 
     def load_config(self) -> None:

@@ -58,6 +58,13 @@ class TestCli(unittest.TestCase):
             app.handle_command("/baseurl https://api.custom.ai/v1")
             self.assertEqual(app.active_profile["base_url"], "https://api.custom.ai/v1")
 
+    def test_handle_export_command(self) -> None:
+        with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(tempfile.gettempdir()) / "test_s.json")):
+            app = MaxTerminalApp()
+            # Test export
+            res = app.handle_command("/export .")
+            self.assertTrue(res)
+
 
 if __name__ == "__main__":
     unittest.main()

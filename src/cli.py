@@ -397,10 +397,19 @@ class MaxTerminalApp:
                 safe_print(color(f"✅ บันทึก Base URL: {url_val}", Colors.GREEN))
             return True
 
+        elif action in {"/export", "/download", "/zip"}:
+            target_path = parts[1].strip() if len(parts) > 1 else "."
+            custom_name = parts[2].strip() if len(parts) > 2 else ""
+            safe_print(color(f"📦 กำลังบีบอัดและส่งออกโฟลเดอร์ '{target_path}' ไปยัง Download...", Colors.YELLOW))
+            res = self.mcp_manager.execute_tool("export_to_download", {"source_path": target_path, "output_name": custom_name})
+            safe_print(color(f"\n{res}", Colors.GREEN if not res.startswith("Error") else Colors.RED))
+            return True
+
         elif action == "/help":
             safe_print(f"""
 {color("คำสั่งที่ใช้งานได้ (Terminal Commands):", Colors.BOLD)}
   {color('/setup', Colors.CYAN)}                  - ตัวช่วยเลือกผู้ให้บริการ & โมเดล (โหมด 1-2-3-4)
+  {color('/export [path]', Colors.CYAN)}          - บีบอัดและส่งออกโปรเจกต์ไปยังโฟลเดอร์ Download ของมือถือ/เครื่อง
   {color('/update', Colors.CYAN)}                 - ตรวจสอบและอัปเดตเวอร์ชันโปรแกรมอัตโนมัติ
   {color('/key <api_key>', Colors.CYAN)}          - กรอกหรือแก้ไข API Key ทันทีในแชท
   {color('/baseurl <url>', Colors.CYAN)}          - กรอกหรือแก้ไข Base URL ทันทีในแชท
