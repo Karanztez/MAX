@@ -53,6 +53,119 @@ class AIClient:
         self.timeout = timeout
         self.api_mode = api_mode
 
+    def _is_anthropic_mode(self, tools: Optional[list[dict[str, Any]]] = None) -> bool:
+        if self.api_mode in ("anthropic", "messages"):
+            return True
+        if tools and any(x in self.base_url.lower() for x in ["claude-native", "claude-cursor", "claude-antigravity"]):
+            return True
+        return False
+
+    @staticmethod
+    def _to_anthropic_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        anthropic_tools = []
+        for t in tools:
+            if "input_schema" in t:
+                anthropic_tools.append(t)
+            elif "function" in t:
+                func = t["function"]
+                schema = func.get("parameters") or {"type": "object", "properties": {}}
+                anthropic_tools.append({
+                    "name": str(func.get("name") or ""),
+                    "description": str(func.get("description") or ""),
+                    "input_schema": schema,
+                })
+        return anthropic_tools
+
+    @classmethod
+    def _to_anthropic_messages(cls, messages: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
+        system_parts: list[str] = []
+        anthropic_msgs: list[dict[str, Any]] = []
+        pending_tool_results: list[dict[str, Any]] = []
+
+        for m in messages:
+            role = m.get("role")
+            if role in {"system", "developer"}:
+                c = m.get("content")
+                if c:
+                    system_parts.append(str(c))
+                continue
+
+            if role == "tool":
+                pending_tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": str(m.get("tool_call_id") or ""),
+                    "content": str(m.get("content") or ""),
+                })
+                continue
+
+            if pending_tool_results:
+                anthropic_msgs.append({
+                    "role": "user",
+                    "content": pending_tool_results,
+                })
+                pending_tool_results = []
+
+            if role == "assistant":
+                content_blocks: list[dict[str, Any]] = []
+                text = m.get("content")
+                if text:
+                    content_blocks.append({"type": "text", "text": str(text)})
+                tool_calls = m.get("tool_calls") or []
+                for tc in tool_calls:
+                    func = tc.get("function", {})
+                    args = func.get("arguments", "{}")
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except Exception:
+                            args = {}
+                    content_blocks.append({
+                        "type": "tool_use",
+                        "id": str(tc.get("id") or ""),
+                        "name": str(func.get("name") or ""),
+                        "input": args if isinstance(args, dict) else {},
+                    })
+                if content_blocks:
+                    anthropic_msgs.append({
+                        "role": "assistant",
+                        "content": content_blocks,
+                    })
+            elif role == "user":
+                content = m.get("content", "")
+                if isinstance(content, str):
+                    anthropic_msgs.append({"role": "user", "content": content})
+                elif isinstance(content, list):
+                    converted_blocks = []
+                    for item in content:
+                        if isinstance(item, dict):
+                            if item.get("type") == "text":
+                                converted_blocks.append({"type": "text", "text": item.get("text", "")})
+                            elif item.get("type") == "image_url":
+                                img = item.get("image_url", {})
+                                url = img.get("url", "") if isinstance(img, dict) else str(img)
+                                if url.startswith("data:"):
+                                    header, b64data = url.split(",", 1)
+                                    media_type = header.split(";")[0].replace("data:", "")
+                                    converted_blocks.append({
+                                        "type": "image",
+                                        "source": {
+                                            "type": "base64",
+                                            "media_type": media_type,
+                                            "data": b64data,
+                                        }
+                                    })
+                                else:
+                                    converted_blocks.append({"type": "text", "text": f"[Image: {url}]"})
+                    anthropic_msgs.append({"role": "user", "content": converted_blocks or ""})
+
+        if pending_tool_results:
+            anthropic_msgs.append({
+                "role": "user",
+                "content": pending_tool_results,
+            })
+
+        return "\n\n".join(system_parts), anthropic_msgs
+
     def _call_response(self, messages: list[dict[str, Any]], temperature: float = 0.7,
                        max_tokens: int = 8192, tools: Optional[list[dict[str, Any]]] = None,
                        _retry: int = 0) -> dict[str, Any]:
@@ -62,7 +175,27 @@ class AIClient:
             raise RuntimeError(
                 "ยังไม่ได้ตั้งค่า API key สำหรับโปรไฟล์ที่เลือก กรุณากดปุ่ม ⚙ เพื่อตั้งค่า"
             )
-        if self.api_mode == "responses":
+        is_anthropic = self._is_anthropic_mode(tools)
+        if is_anthropic:
+            url = f"{self.base_url}/messages"
+            system_str, ant_messages = self._to_anthropic_messages(messages)
+            payload: dict[str, Any] = {
+                "model": self.model,
+                "max_tokens": max_tokens,
+                "messages": ant_messages,
+                "temperature": temperature,
+            }
+            if system_str:
+                payload["system"] = system_str
+            if tools:
+                payload["tools"] = self._to_anthropic_tools(tools)
+            req_headers = {
+                "Content-Type": "application/json",
+                "x-api-key": self.api_key,
+                "Authorization": f"Bearer {self.api_key}",
+                "anthropic-version": "2023-06-01",
+            }
+        elif self.api_mode == "responses":
             url = f"{self.base_url}/responses"
             instructions = "\n\n".join(
                 str(message.get("content", "")) for message in messages
@@ -75,6 +208,10 @@ class AIClient:
                 payload["instructions"] = instructions
             if tools:
                 payload["tools"] = [self._response_tool(tool) for tool in tools]
+            req_headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+            }
         else:
             url = f"{self.base_url}/chat/completions"
             payload = {
@@ -85,19 +222,44 @@ class AIClient:
             }
             if tools:
                 payload["tools"] = tools
+            req_headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+            }
         body = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
             url,
             data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}",
-            },
+            headers=req_headers,
             method="POST",
         )
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
+                if is_anthropic:
+                    text_parts = []
+                    tool_calls = []
+                    for item in data.get("content", []):
+                        if isinstance(item, dict):
+                            if item.get("type") == "text":
+                                text_parts.append(str(item.get("text") or ""))
+                            elif item.get("type") == "tool_use":
+                                input_args = item.get("input") or {}
+                                tool_calls.append({
+                                    "id": str(item.get("id") or ""),
+                                    "type": "function",
+                                    "function": {
+                                        "name": str(item.get("name") or ""),
+                                        "arguments": json.dumps(input_args, ensure_ascii=False) if isinstance(input_args, dict) else str(input_args),
+                                    },
+                                })
+                    result: dict[str, Any] = {
+                        "role": "assistant",
+                        "content": "".join(text_parts),
+                    }
+                    if tool_calls:
+                        result["tool_calls"] = tool_calls
+                    return result
                 if self.api_mode == "responses":
                     tool_calls = []
                     for item in data.get("output", []):
@@ -416,7 +578,8 @@ class AIClient:
                     on_status(f"⚠️ เซิร์ฟเวอร์ขัดข้อง: {err_msg[:80]}")
                 # If we already have tool actions executed, don't crash and drop everything!
                 # Break out and synthesize or generate a fallback summary from what was gathered.
-                if logs:
+                has_tools_executed = any(l.startswith("🔧 เรียกใช้เครื่องมือ:") for l in logs)
+                if has_tools_executed:
                     break
                 raise
             messages.append(assistant_msg)
@@ -531,6 +694,10 @@ class AIClient:
                 actions[-1]["result"] = res
 
         if not actions:
+            server_errs = [l for l in logs if "⚠️ เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ AI:" in l]
+            if server_errs:
+                err_line = server_errs[-1].replace("⚠️ เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ AI:", "").strip()
+                return f"⚠️ **ไม่สามารถดำเนินการได้:** เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ AI ({err_line})\n\nคำขอใช้เวลาเกินกำหนดหรือเซิร์ฟเวอร์ปลายทางปฏิเสธคำสั่ง กรุณาลองใหม่อีกครั้ง หรือสลับไปใช้โปรไฟล์/โมเดลอื่น (เช่น Gemini หรือ DeepSeek)"
             return "ดำเนินการตามคำสั่งเสร็จสิ้นเรียบร้อยแล้วครับ หากต้องการให้ดำเนินการเพิ่มเติมในส่วนใด สามารถแจ้งได้ทันทีครับ"
 
         lines = [

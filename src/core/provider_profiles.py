@@ -150,7 +150,7 @@ def default_profiles() -> list[dict[str, Any]]:
             "id": "maxplus-claude-native",
             "name": "Claude Native",
             "base_url": "https://api.maxplus-ai.cc/claude-native/v1",
-            "api_mode": "chat_completions",
+            "api_mode": "anthropic",
             "api_key": "",
             "models": list(CLAUDE_NATIVE_MODELS),
             "model": "claude-sonnet-4-6",
@@ -186,7 +186,7 @@ def default_profiles() -> list[dict[str, Any]]:
             "id": "maxplus-claude-cursor",
             "name": "Claude Cursor Full",
             "base_url": "https://api.maxplus-ai.cc/claude-cursor-full/v1",
-            "api_mode": "chat_completions",
+            "api_mode": "anthropic",
             "api_key": "",
             "models": list(CLAUDE_CURSOR_MODELS),
             "model": "claude-sonnet-4-6",
@@ -195,7 +195,7 @@ def default_profiles() -> list[dict[str, Any]]:
             "id": "maxplus-claude-antigravity",
             "name": "Claude Antigravity Full",
             "base_url": "https://api.maxplus-ai.cc/claude-antigravity-full/v1",
-            "api_mode": "chat_completions",
+            "api_mode": "anthropic",
             "api_key": "",
             "models": list(CLAUDE_ANTIGRAVITY_MODELS),
             "model": "claude-sonnet-4-6",
@@ -270,11 +270,22 @@ def normalize_profile(value: dict[str, Any]) -> dict[str, Any]:
         models.insert(0, model)
     if not models:
         models = ["model-name"]
+    raw_mode = str(value.get("api_mode") or "").strip().lower()
+    base_url_str = str(value.get("base_url") or "").strip().rstrip("/")
+    if raw_mode in ("anthropic", "messages"):
+        api_mode = "anthropic"
+    elif raw_mode == "responses":
+        api_mode = "responses"
+    elif any(x in base_url_str.lower() for x in ["claude-native", "claude-cursor", "claude-antigravity"]):
+        api_mode = "anthropic"
+    else:
+        api_mode = "chat_completions"
+
     return {
         "id": str(value.get("id") or uuid4().hex),
         "name": str(value.get("name") or "Custom API").strip() or "Custom API",
-        "base_url": str(value.get("base_url") or "").strip().rstrip("/"),
-        "api_mode": "responses" if value.get("api_mode") == "responses" else "chat_completions",
+        "base_url": base_url_str,
+        "api_mode": api_mode,
         "api_key": str(value.get("api_key") or "").strip(),
         "models": models,
         "model": model or models[0],

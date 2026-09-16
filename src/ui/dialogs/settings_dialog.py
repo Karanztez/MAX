@@ -27,6 +27,7 @@ except (ImportError, ModuleNotFoundError):
 class SettingsDialog(tk.Toplevel):
     MODE_LABELS = {
         "OpenAI Chat Completions": "chat_completions",
+        "Anthropic Messages": "anthropic",
         "OpenAI Responses": "responses",
     }
 
