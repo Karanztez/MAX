@@ -1,4 +1,7 @@
 """max_ai.session forwarder."""
-from src.max_ai.session import MaxSession, Response
+try:
+    from max_ai.session import MaxSession, Response
+except (ImportError, ModuleNotFoundError):
+    from src.max_ai.session import MaxSession, Response  # type: ignore[no-redef]
 
 __all__ = ["MaxSession", "Response"]
