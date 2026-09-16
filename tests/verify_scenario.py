@@ -16,8 +16,12 @@ if hasattr(sys.stdout, "reconfigure"):
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.core.mcp.builtins.web_tools import _builtin_fetch_web
-from src.core.ai_client import AIClient
+try:
+    from core.mcp.builtins.web_tools import _builtin_fetch_web
+    from core.ai_client import AIClient
+except ImportError:
+    from src.core.mcp.builtins.web_tools import _builtin_fetch_web  # type: ignore[no-redef]
+    from src.core.ai_client import AIClient  # type: ignore[no-redef]
 
 
 def run_tests():
