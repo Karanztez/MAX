@@ -1,5 +1,6 @@
 import json
 import sys
+import unittest
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,54 +28,62 @@ class _Response:
         return json.dumps(self._payload).encode("utf-8")
 
 
-def main() -> None:
-    profiles = default_profiles()
-    native_p = next(p for p in profiles if p["id"] == "maxplus-claude-native")
-    cursor_p = next(p for p in profiles if p["id"] == "maxplus-claude-cursor")
-    anti_p = next(p for p in profiles if p["id"] == "maxplus-claude-antigravity")
+class TestProviderProfiles(unittest.TestCase):
+    def test_provider_profiles(self) -> None:
+        profiles = default_profiles()
+        native_p = next(p for p in profiles if p["id"] == "maxplus-claude-native")
+        cursor_p = next(p for p in profiles if p["id"] == "maxplus-claude-cursor")
+        anti_p = next(p for p in profiles if p["id"] == "maxplus-claude-antigravity")
 
-    assert native_p["base_url"].endswith("/claude-native/v1")
-    assert "claude-fable-5-1" in native_p["models"]
-    assert cursor_p["base_url"].endswith("/claude-cursor-full/v1")
-    assert "claude-fable-5-1" in cursor_p["models"]
-    assert anti_p["base_url"].endswith("/claude-antigravity-full/v1")
-    assert "claude-opus-4-6-thinking" in anti_p["models"]
+        self.assertTrue(native_p["base_url"].endswith("/claude-native/v1"))
+        self.assertIn("claude-fable-5-1", native_p["models"])
+        self.assertTrue(cursor_p["base_url"].endswith("/claude-cursor-full/v1"))
+        self.assertIn("claude-fable-5-1", cursor_p["models"])
+        self.assertTrue(anti_p["base_url"].endswith("/claude-antigravity-full/v1"))
+        self.assertIn("claude-opus-4-6-thinking", anti_p["models"])
 
-    duplicate = normalize_profiles([profiles[0], {**profiles[0], "id": "copy"}])
-    assert duplicate[0]["name"] != duplicate[1]["name"]
+        duplicate = normalize_profiles([profiles[0], {**profiles[0], "id": "copy"}])
+        self.assertNotEqual(duplicate[0]["name"], duplicate[1]["name"])
 
-    captured = {}
+        captured = {}
 
-    def fake_urlopen(request, timeout=0):
-        captured["url"] = request.full_url
-        captured["payload"] = json.loads(request.data.decode("utf-8"))
-        return _Response({"output": [{"content": [{"type": "output_text", "text": "ok"}]}]})
+        def fake_urlopen(request, timeout=0):
+            captured["url"] = request.full_url
+            captured["payload"] = json.loads(request.data.decode("utf-8"))
+            return _Response({"output": [{"content": [{"type": "output_text", "text": "ok"}]}]})
 
-    client = AIClient(api_key="secret", base_url="https://api.openai.com/v1",
-                      model="gpt-6-astra", api_mode="responses")
-    with patch("urllib.request.urlopen", fake_urlopen):
-        answer = client.ask([
-            {"type": "text", "text": "describe"},
-            {"type": "image_url", "image_url": {"url": "data:image/png;base64,AA=="}},
-        ])
-    assert answer == "ok"
-    assert captured["url"].endswith("/responses")
-    assert captured["payload"]["input"][0]["content"][1]["type"] == "input_image"
-    assert "temperature" not in captured["payload"]
+        client = AIClient(
+            api_key="secret",
+            base_url="https://api.openai.com/v1",
+            model="gpt-6-astra",
+            api_mode="responses",
+        )
+        with patch("urllib.request.urlopen", fake_urlopen):
+            answer = client.ask([
+                {"type": "text", "text": "describe"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,AA=="}},
+            ])
+        self.assertEqual(answer, "ok")
+        self.assertTrue(captured["url"].endswith("/responses"))
+        self.assertEqual(captured["payload"]["input"][0]["content"][1]["type"], "input_image")
+        self.assertNotIn("temperature", captured["payload"])
 
-    def fake_chat_urlopen(request, timeout=0):
-        captured["url"] = request.full_url
-        captured["payload"] = json.loads(request.data.decode("utf-8"))
-        return _Response({"choices": [{"message": {"content": "claude-ok"}}]})
+        def fake_chat_urlopen(request, timeout=0):
+            captured["url"] = request.full_url
+            captured["payload"] = json.loads(request.data.decode("utf-8"))
+            return _Response({"choices": [{"message": {"content": "claude-ok"}}]})
 
-    claude = AIClient(api_key="secret", base_url=cursor_p["base_url"],
-                      model="claude-sonnet-4-6", api_mode="chat_completions")
-    with patch("urllib.request.urlopen", fake_chat_urlopen):
-        assert claude.ask("hello") == "claude-ok"
-    assert captured["url"].endswith("/claude-cursor-full/v1/chat/completions")
-    assert captured["payload"]["model"] == "claude-sonnet-4-6"
-    print("provider profile tests passed")
+        claude = AIClient(
+            api_key="secret",
+            base_url=cursor_p["base_url"],
+            model="claude-sonnet-4-6",
+            api_mode="chat_completions",
+        )
+        with patch("urllib.request.urlopen", fake_chat_urlopen):
+            self.assertEqual(claude.ask("hello"), "claude-ok")
+        self.assertTrue(captured["url"].endswith("/claude-cursor-full/v1/chat/completions"))
+        self.assertEqual(captured["payload"]["model"], "claude-sonnet-4-6")
 
 
 if __name__ == "__main__":
-    main()
+    unittest.main()
