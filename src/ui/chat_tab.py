@@ -32,6 +32,7 @@ try:
     from ui.themes import T, FONT, FONT_BOLD, FONT_TINY
     from ui.widgets.message_bubble import MessageBubble
     from ui.widgets.scrollable_frame import ScrollableFrame
+    from ui.widgets.context_menu import attach_text_context_menu
 except (ImportError, ModuleNotFoundError):
     from src.core.ai_client import AIClient  # type: ignore[no-redef]
     from src.core.mcp_manager import MCPManager  # type: ignore[no-redef]
@@ -42,6 +43,7 @@ except (ImportError, ModuleNotFoundError):
     from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY  # type: ignore[no-redef]
     from src.ui.widgets.message_bubble import MessageBubble  # type: ignore[no-redef]
     from src.ui.widgets.scrollable_frame import ScrollableFrame  # type: ignore[no-redef]
+    from src.ui.widgets.context_menu import attach_text_context_menu  # type: ignore[no-redef]
 
 
 
@@ -76,6 +78,7 @@ class ChatTab(tk.Frame):
                                   relief="flat", bd=0)
         self.sys_entry.insert(0, "You are a helpful AI assistant")
         self.sys_entry.pack(fill="x", expand=True, side="left")
+        attach_text_context_menu(self.sys_entry, is_editable=True)
 
         # scroll area
         self.scroll = ScrollableFrame(self)
@@ -105,6 +108,7 @@ class ChatTab(tk.Frame):
                              padx=4, pady=4, undo=True,
                              spacing1=2, spacing2=3)
         self.entry.pack(fill="x", expand=True)
+        attach_text_context_menu(self.entry, is_editable=True, on_paste=self._on_paste)
         self.entry.bind("<Return>",       lambda e: (self._send_chat(), "break")[1])
         self.entry.bind("<Shift-Return>", lambda _: None)
         self.entry.bind("<Control-v>", self._on_paste)

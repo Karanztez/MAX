@@ -6,9 +6,22 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Any, Optional
 
-from src.core.provider_profiles import normalize_profile, normalize_profiles, new_custom_profile
-from src.ui.clipboard import read_clipboard_text
-from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_TITLE
+try:
+    from core.provider_profiles import normalize_profile, normalize_profiles, new_custom_profile, default_profiles
+    from core.updater import check_github_release, is_newer_version, APP_VERSION
+    from ui.clipboard import read_clipboard_text
+    from ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_TITLE
+    from ui.widgets.context_menu import attach_text_context_menu
+    from ui.dialogs.health_dialog import HealthCheckDialog
+    from ui.dialogs.update_dialog import UpdateDialog
+except (ImportError, ModuleNotFoundError):
+    from src.core.provider_profiles import normalize_profile, normalize_profiles, new_custom_profile, default_profiles  # type: ignore[no-redef]
+    from src.core.updater import check_github_release, is_newer_version, APP_VERSION  # type: ignore[no-redef]
+    from src.ui.clipboard import read_clipboard_text  # type: ignore[no-redef]
+    from src.ui.themes import T, FONT, FONT_BOLD, FONT_TINY, FONT_TITLE  # type: ignore[no-redef]
+    from src.ui.widgets.context_menu import attach_text_context_menu  # type: ignore[no-redef]
+    from src.ui.dialogs.health_dialog import HealthCheckDialog  # type: ignore[no-redef]
+    from src.ui.dialogs.update_dialog import UpdateDialog  # type: ignore[no-redef]
 
 
 class SettingsDialog(tk.Toplevel):
@@ -90,6 +103,7 @@ class SettingsDialog(tk.Toplevel):
         self._key_entry = tk.Entry(key_row, textvariable=self._key_var, show="●", bg=T["bg2"],
                                    fg=T["fg"], insertbackground=T["fg"], relief="flat", bd=0, font=FONT)
         self._key_entry.pack(side="left", fill="x", expand=True)
+        attach_text_context_menu(self._key_entry, is_editable=True, on_paste=lambda _e: self._paste_key())
         self._key_entry.bind("<Control-v>", self._paste_key)
         self._key_entry.bind("<Control-V>", self._paste_key)
         self._key_entry.bind("<Control-KeyPress>", self._key_control_shortcut)
@@ -130,7 +144,6 @@ class SettingsDialog(tk.Toplevel):
         tk.Label(footer, textvariable=self._save_status_var, bg=T["bg"], fg=T["ai_hdr"],
                  font=FONT_TINY).pack(side="left")
 
-        from src.core.updater import APP_VERSION
         self._update_check_btn = tk.Button(
             footer, text=f"🔄 ตรวจหาอัปเดต (v{APP_VERSION})", command=self._check_updates_click,
             bg=T["bg2"], fg=T["sub"], activebackground=T["bg3"], activeforeground=T["fg"],
@@ -156,7 +169,6 @@ class SettingsDialog(tk.Toplevel):
 
     def _open_health_check(self) -> None:
         self._commit_editor()
-        from src.ui.dialogs.health_dialog import HealthCheckDialog
         selected_id = self._profiles[self._index]["id"]
         HealthCheckDialog(self, self._profiles, selected_id)
 
@@ -165,8 +177,6 @@ class SettingsDialog(tk.Toplevel):
         if hasattr(parent, "check_updates_manual"):
             parent.check_updates_manual()
         else:
-            from src.core.updater import check_github_release, is_newer_version, APP_VERSION
-            from src.ui.dialogs.update_dialog import UpdateDialog
             info = check_github_release()
             if info and is_newer_version(info.tag_name, APP_VERSION):
                 UpdateDialog(self, info)
@@ -176,10 +186,12 @@ class SettingsDialog(tk.Toplevel):
 
     def _field(self, parent: tk.Misc, label: str, variable: tk.StringVar) -> None:
         tk.Label(parent, text=label, bg=T["bg"], fg=T["fg_dim"], font=FONT_TINY).pack(anchor="w", pady=(0, 5))
-        tk.Entry(parent, textvariable=variable, bg=T["bg2"], fg=T["fg"],
-                 insertbackground=T["fg"], relief="flat", bd=0,
-                 highlightthickness=1, highlightbackground=T["border"],
-                 font=FONT).pack(fill="x", ipady=7, pady=(0, 10))
+        ent = tk.Entry(parent, textvariable=variable, bg=T["bg2"], fg=T["fg"],
+                       insertbackground=T["fg"], relief="flat", bd=0,
+                       highlightthickness=1, highlightbackground=T["border"],
+                       font=FONT)
+        ent.pack(fill="x", ipady=7, pady=(0, 10))
+        attach_text_context_menu(ent, is_editable=True)
 
     def _refresh_list(self) -> None:
         self._loading = True
@@ -241,7 +253,6 @@ class SettingsDialog(tk.Toplevel):
 
     def _reset_defaults(self) -> None:
         """Reset profiles to standard official presets while preserving entered API keys."""
-        from src.core.provider_profiles import default_profiles
         from copy import deepcopy
         defaults = default_profiles()
         existing_keys = {p.get("id"): p.get("api_key", "") for p in self._profiles if p.get("api_key")}

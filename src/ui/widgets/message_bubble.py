@@ -31,6 +31,7 @@ try:
         FONT_CODE_INLINE,
         FONT_QUOTE,
     )
+    from ui.widgets.context_menu import attach_text_context_menu
 except (ImportError, ModuleNotFoundError):
     from src.ui.themes import (  # type: ignore[no-redef]
         T,
@@ -45,6 +46,7 @@ except (ImportError, ModuleNotFoundError):
         FONT_CODE_INLINE,
         FONT_QUOTE,
     )
+    from src.ui.widgets.context_menu import attach_text_context_menu  # type: ignore[no-redef]
 
 
 def extract_media_items(text: str) -> list[dict[str, str]]:
@@ -279,6 +281,7 @@ class MessageBubble(tk.Frame):
         self.body.configure(state="disabled")
         self.body.pack(fill="x", expand=True)
         self.body.bind("<Key>", self._guard)
+        attach_text_context_menu(self.body, is_editable=False)
         self._add_save_buttons(content)
         self._media_container = tk.Frame(self, bg=bg_card)
         self._media_container.pack(fill="x", pady=(4, 0))
@@ -483,6 +486,7 @@ class MessageBubble(tk.Frame):
             )
             code_box.insert("1.0", detail[:800] + ("..." if len(detail) > 800 else ""))
             code_box.configure(state="disabled")
+            attach_text_context_menu(code_box, is_editable=False)
             code_box.pack(fill="x", pady=(3, 0))
 
     def _animate_spinner(self) -> None:
