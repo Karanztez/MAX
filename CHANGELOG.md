@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Automated GitHub Actions Release workflow with semantic version auto-increment (`bump_version.py`).
-- Automatic markdown changelog extraction and fallback to Git commits.
-- Added `release-manager` skill for managing release versions and publishing.
+- **CLI Self-Updater (`/update`)**: Added command in Terminal/Mobile CLI to check GitHub releases, preview Changelogs, and auto-download/update both frozen EXE and source/git environments.
+- **Interactive Numbered Setup (1-2-3-4)**: First-run setup and `/setup` wizard in CLI allowing users to choose AI Provider by number [1..N], select model by number [1..N], and configure custom endpoints.
+- **In-Chat API Key & Base URL Guard**: Prompt directly inside the CLI chat session whenever API keys or Base URLs are missing, with instant secure DPAPI/POSIX persistence.
+- **Automated GitHub Actions Release workflow** with semantic version auto-increment (`bump_version.py`).
+- **Release Manager Skill** in `skills/release-manager/SKILL.md`.
 
 ---
 

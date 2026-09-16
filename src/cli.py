@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Optional
@@ -19,10 +21,17 @@ if _ROOT not in sys.path:
 
 from src.core.ai_client import AIClient
 from src.core.mcp_manager import MCPManager
-from src.core.provider_profiles import default_profiles, normalize_profiles
+from src.core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile
 from src.core.settings_store import SettingsStore
 from src.core.skill_manager import SkillManager
-from src.core.updater import APP_VERSION
+from src.core.updater import (
+    APP_VERSION,
+    check_github_release,
+    is_newer_version,
+    is_frozen_exe,
+    download_file,
+    apply_exe_update_and_restart,
+)
 
 
 # ─── ANSI Terminal Colors ───────────────────────────────────────────────────────
@@ -66,6 +75,7 @@ class MaxTerminalApp:
         self.settings_store = SettingsStore()
         self.skill_manager = SkillManager()
         self.mcp_manager = MCPManager()
+        self.is_first_run = not self.settings_store.has_saved_key()
         self.profiles, self.selected_profile_id = self.settings_store.load_provider_settings(default_profiles())
         self.history: list[dict[str, Any]] = []
         self.active_profile = self._get_active_profile()
@@ -75,6 +85,37 @@ class MaxTerminalApp:
             if p["id"] == self.selected_profile_id:
                 return p
         return self.profiles[0] if self.profiles else default_profiles()[0]
+
+    def _save_profiles(self) -> None:
+        self.settings_store.save_provider_settings(
+            self.profiles, self.selected_profile_id, remember=True
+        )
+
+    def _ensure_credentials(self) -> bool:
+        """Prompt user for Base URL or API Key directly in CLI if missing."""
+        p = self.active_profile
+
+        # 1. Check Base URL
+        if not p.get("base_url", "").strip():
+            safe_print(color(f"\n🌐 ยังไม่ได้ระบุ Base URL สำหรับโปรไฟล์ [{p.get('name', 'Custom')}]", Colors.YELLOW))
+            new_url = input(f"{color('กรุณากรอก Base URL', Colors.BOLD)}: ").strip()
+            if new_url:
+                p["base_url"] = new_url
+                self._save_profiles()
+                safe_print(color(f"✅ บันทึก Base URL: {new_url}", Colors.GREEN))
+
+        # 2. Check API Key
+        env_key = os.environ.get("MAXPLUS_API_KEY", "").strip()
+        if not p.get("api_key", "").strip() and not env_key:
+            safe_print(color(f"\n🔑 ไม่พบ API Key สำหรับโปรไฟล์ [{p.get('name', 'Default')}]", Colors.YELLOW))
+            safe_print(color("  (คุณสามารถกด Enter เพื่อข้ามหากเซิร์ฟเวอร์ไม่จำเป็นต้องใช้ Key)", Colors.DIM))
+            new_key = input(f"{color('กรุณากรอก API Key', Colors.BOLD)}: ").strip()
+            if new_key:
+                p["api_key"] = new_key
+                self._save_profiles()
+                safe_print(color("✅ บันทึก API Key เรียบร้อยแล้ว", Colors.GREEN))
+
+        return True
 
     def _create_client(self) -> AIClient:
         p = self.active_profile
@@ -86,6 +127,198 @@ class MaxTerminalApp:
             timeout=60,
         )
 
+    def interactive_setup(self, is_first_time: bool = False) -> None:
+        """Numbered 1-2-3-4 interactive setup for Provider, Model, Base URL, and API Key."""
+        title = "✨ ยินดีต้อนรับสู่ MAX AI — ตั้งค่าเริ่มต้นใช้งาน" if is_first_time else "⚙️ ตั้งค่าผู้ให้บริการและโมเดล (Provider & Model Setup)"
+        safe_print(color(f"\n{'='*65}", Colors.CYAN))
+        safe_print(color(f"  {title}", Colors.BOLD + Colors.GREEN))
+        safe_print(color(f"{'='*65}\n", Colors.CYAN))
+
+        # ─── Step 1: Select Provider ──────────────────────────────────────────
+        safe_print(color("📌 ขั้นตอนที่ 1: เลือกผู้ให้บริการ AI (พิมพ์หมายเลข 1-N หรือชื่อ):", Colors.BOLD))
+        for idx, p in enumerate(self.profiles, 1):
+            is_active = p["id"] == self.selected_profile_id
+            marker = color("▶ [เลือกอยู่]", Colors.GREEN) if is_active else "  "
+            safe_print(f"  [{idx}] {p['name']} ({p.get('base_url', '')}) {marker}")
+        safe_print(f"  [+] เพิ่ม Custom Provider ใหม่")
+
+        while True:
+            choice = input(color(f"\nเลือกผู้ให้บริการ [1-{len(self.profiles)} / +]: ", Colors.BOLD + Colors.CYAN)).strip()
+            if not choice:
+                # Keep current
+                break
+            if choice == "+":
+                new_p = new_custom_profile(len(self.profiles) + 1)
+                custom_name = input("ตั้งชื่อ Provider ใหม่: ").strip() or new_p["name"]
+                new_p["name"] = custom_name
+                custom_url = input("ระบุ Base URL (เช่น https://api.openai.com/v1): ").strip()
+                if custom_url:
+                    new_p["base_url"] = custom_url
+                self.profiles.append(new_p)
+                self.selected_profile_id = new_p["id"]
+                self.active_profile = new_p
+                safe_print(color(f"✅ เพิ่ม Provider '{custom_name}' เรียบร้อยแล้ว", Colors.GREEN))
+                break
+            elif choice.isdigit():
+                val = int(choice)
+                if 1 <= val <= len(self.profiles):
+                    self.active_profile = self.profiles[val - 1]
+                    self.selected_profile_id = self.active_profile["id"]
+                    safe_print(color(f"✅ เลือก Provider: {self.active_profile['name']}", Colors.GREEN))
+                    break
+                else:
+                    safe_print(color(f"❌ หมายเลขต้องอยู่ระหว่าง 1 ถึง {len(self.profiles)}", Colors.RED))
+            else:
+                # Match by name
+                match = next((p for p in self.profiles if p["name"].casefold() == choice.casefold()), None)
+                if match:
+                    self.active_profile = match
+                    self.selected_profile_id = match["id"]
+                    safe_print(color(f"✅ เลือก Provider: {match['name']}", Colors.GREEN))
+                    break
+                else:
+                    safe_print(color(f"❌ ไม่พบตัวเลือก '{choice}' กรุณาระบุใหม่", Colors.RED))
+
+        # ─── Step 2: Select Model ─────────────────────────────────────────────
+        models = self.active_profile.get("models", [])
+        if not models:
+            models = ["gemini-3.8-flash"]
+            self.active_profile["models"] = models
+
+        safe_print(color(f"\n🤖 ขั้นตอนที่ 2: เลือกโมเดลสำหรับ [{self.active_profile['name']}] (พิมพ์หมายเลข 1-N หรือชื่อโมเดล):", Colors.BOLD))
+        cur_model = self.active_profile.get("model", "")
+        for idx, m in enumerate(models, 1):
+            is_cur = (m == cur_model)
+            marker = color("▶ [เลือกอยู่]", Colors.GREEN) if is_cur else "  "
+            safe_print(f"  [{idx}] {m} {marker}")
+        safe_print(f"  [+] กำหนดชื่อโมเดลใหม่เอง")
+
+        while True:
+            m_choice = input(color(f"\nเลือกโมเดล [1-{len(models)} / + / ชื่อโมเดล]: ", Colors.BOLD + Colors.CYAN)).strip()
+            if not m_choice:
+                break
+            if m_choice == "+":
+                custom_m = input("กรุณากรอกชื่อโมเดลที่ต้องการ: ").strip()
+                if custom_m:
+                    if custom_m not in models:
+                        models.insert(0, custom_m)
+                    self.active_profile["model"] = custom_m
+                    safe_print(color(f"✅ เลือกโมเดล: {custom_m}", Colors.GREEN))
+                    break
+            elif m_choice.isdigit():
+                val = int(m_choice)
+                if 1 <= val <= len(models):
+                    self.active_profile["model"] = models[val - 1]
+                    safe_print(color(f"✅ เลือกโมเดล: {self.active_profile['model']}", Colors.GREEN))
+                    break
+                else:
+                    safe_print(color(f"❌ หมายเลขต้องอยู่ระหว่าง 1 ถึง {len(models)}", Colors.RED))
+            else:
+                if m_choice not in models:
+                    models.insert(0, m_choice)
+                self.active_profile["model"] = m_choice
+                safe_print(color(f"✅ เลือกโมเดล: {m_choice}", Colors.GREEN))
+                break
+
+        # ─── Step 3: Base URL & API Key Check ─────────────────────────────────
+        safe_print(color(f"\n🔑 ขั้นตอนที่ 3: ตรวจสอบการเชื่อมต่อและ API Key", Colors.BOLD))
+        cur_url = self.active_profile.get("base_url", "")
+        url_input = input(f"🌐 Base URL [{cur_url}] (กด Enter เพื่อคงเดิม): ").strip()
+        if url_input:
+            self.active_profile["base_url"] = url_input
+
+        cur_key = self.active_profile.get("api_key", "")
+        masked_key = (cur_key[:6] + "..." + cur_key[-4:]) if len(cur_key) > 10 else ("(ตั้งค่าแล้ว)" if cur_key else "(ยังไม่มี)")
+        key_input = input(f"🔑 API Key [{masked_key}] (กด Enter เพื่อคงเดิม): ").strip()
+        if key_input:
+            self.active_profile["api_key"] = key_input
+
+        # Save all settings securely
+        self._save_profiles()
+        safe_print(color("\n✨ บันทึกการตั้งค่าทั้งหมดเรียบร้อยแล้ว พร้อมใช้งานทันที!\n", Colors.BOLD + Colors.GREEN))
+
+    def check_and_perform_update(self) -> None:
+        """Check for updates from GitHub Releases and perform self-update."""
+        safe_print(color(f"\n🔍 กำลังตรวจสอบการอัปเดตจาก GitHub ({APP_VERSION})...", Colors.YELLOW))
+        info = check_github_release()
+        if not info:
+            safe_print(color("❌ ไม่สามารถเชื่อมต่อกับ GitHub API ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง", Colors.RED))
+            return
+
+        if not is_newer_version(info.version, APP_VERSION):
+            safe_print(color(f"✅ คุณกำลังใช้งาน MAX AI เวอร์ชันล่าสุดแล้ว (v{APP_VERSION})", Colors.GREEN))
+            return
+
+        safe_print(color(f"\n🚀 พบเวอร์ชันใหม่: {info.tag_name} (เวอร์ชันปัจจุบัน: v{APP_VERSION})", Colors.BOLD + Colors.GREEN))
+        safe_print(color(f"หัวข้อ: {info.title}", Colors.BOLD))
+        if info.body.strip():
+            safe_print(color("\n📝 บันทึกการเปลี่ยนแปลง (Changelog):", Colors.BOLD))
+            safe_print(color("-" * 50, Colors.DIM))
+            safe_print(info.body.strip())
+            safe_print(color("-" * 50, Colors.DIM))
+
+        prompt = input(color(f"\n⚡ คุณต้องการอัปเดตเป็น {info.tag_name} ทันทีหรือไม่? [Y/n]: ", Colors.BOLD + Colors.CYAN)).strip().lower()
+        if prompt not in {"", "y", "yes"}:
+            safe_print(color("ยกเลิกการอัปเดต", Colors.YELLOW))
+            return
+
+        # Handle update depending on runtime mode
+        if is_frozen_exe():
+            if not info.download_url:
+                safe_print(color("❌ ไม่พบไฟล์ .exe สำหรับดาวน์โหลดใน Release ล่าสุด", Colors.RED))
+                safe_print(color(f"กรุณาดาวน์โหลดด้วยตนเองที่: {info.html_url}", Colors.CYAN))
+                return
+
+            safe_print(color(f"\n⬇️ กำลังดาวน์โหลด {info.asset_name or 'MaxPlusAI.exe'}...", Colors.CYAN))
+            temp_dir = tempfile.mkdtemp()
+            temp_exe = os.path.join(temp_dir, "MaxPlusAI_new.exe")
+
+            def on_progress(downloaded: int, total: int) -> None:
+                if total > 0:
+                    pct = int(downloaded / total * 100)
+                    mb_down = downloaded / (1024 * 1024)
+                    mb_total = total / (1024 * 1024)
+                    bar = "█" * (pct // 5) + "░" * (20 - (pct // 5))
+                    sys.stdout.write(f"\r  [{bar}] {pct}% ({mb_down:.1f}MB/{mb_total:.1f}MB)")
+                    sys.stdout.flush()
+
+            try:
+                download_file(info.download_url, temp_exe, progress_callback=on_progress)
+                safe_print(color("\n\n✅ ดาวน์โหลดเสร็จสิ้น กำลังสลับไฟล์และรีสตาร์ตโปรแกรม...", Colors.GREEN))
+                time.sleep(1)
+                apply_exe_update_and_restart(temp_exe)
+            except Exception as ex:
+                safe_print(color(f"\n❌ การอัปเดตล้มเหลว: {ex}", Colors.RED))
+        else:
+            # Source / Git / Pip Mode
+            safe_print(color("\n🔄 กำลังอัปเดตซอร์สโค้ด...", Colors.CYAN))
+            is_git = (Path(_ROOT) / ".git").exists()
+            if is_git:
+                try:
+                    res = subprocess.run(["git", "pull", "origin", "main"], cwd=_ROOT, capture_output=True, text=True)
+                    if res.returncode == 0:
+                        safe_print(color(res.stdout, Colors.DIM))
+                        safe_print(color("📦 กำลังอัปเดต Dependencies...", Colors.CYAN))
+                        subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."], cwd=_ROOT, capture_output=True)
+                        safe_print(color(f"\n✨ อัปเดต MAX AI เป็น {info.tag_name} เรียบร้อยแล้ว!", Colors.BOLD + Colors.GREEN))
+                        safe_print(color("กรุณารันคำสั่ง 'max' หรือรีสตาร์ตโปรแกรมเพื่อเริ่มใช้งานเวอร์ชันใหม่", Colors.YELLOW))
+                        return
+                    else:
+                        safe_print(color(f"Git pull error: {res.stderr}", Colors.RED))
+                except Exception as ex:
+                    safe_print(color(f"Git update failed: {ex}", Colors.RED))
+
+            # Pip fallback
+            try:
+                safe_print(color("📦 กำลังอัปเดตผ่าน pip...", Colors.CYAN))
+                res = subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "git+https://github.com/Karanztez/MAX.git"], capture_output=True, text=True)
+                if res.returncode == 0:
+                    safe_print(color(f"\n✨ อัปเดต MAX AI สำเร็จแล้ว! กรุณารีสตาร์ตคำสั่ง max", Colors.BOLD + Colors.GREEN))
+                else:
+                    safe_print(color(f"Pip update error: {res.stderr}", Colors.RED))
+            except Exception as ex:
+                safe_print(color(f"Update failed: {ex}", Colors.RED))
+
     def print_banner(self) -> None:
         p = self.active_profile
         tools_count = len(self.mcp_manager.get_all_tools()) if self.mcp_manager.enabled else 0
@@ -95,8 +328,8 @@ class MaxTerminalApp:
 {color("║", Colors.CYAN)}  Platform: {color(f"{sys.platform} ({os.name})", Colors.YELLOW)}  •  Tools: {color(str(tools_count) + ' available', Colors.GREEN)}      {color("║", Colors.CYAN)}
 {color("║", Colors.CYAN)}  Profile:  {color(p.get('name', 'Default'), Colors.BOLD)}  •  Model: {color(p.get('model', ''), Colors.CYAN)}  {color("║", Colors.CYAN)}
 {color("╚═══════════════════════════════════════════════════════════════╝", Colors.CYAN)}
-พิมพ์ {color('/help', Colors.BOLD)} เพื่อดูคำสั่งทั้งหมด หรือพิมพ์ข้อความเพื่อเริ่มคุยได้ทันที
-พิมพ์ {color('/exit', Colors.RED)} เพื่อออกจากโปรแกรม
+พิมพ์ {color('/help', Colors.BOLD)} เพื่อดูคำสั่งทั้งหมด | {color('/setup', Colors.BOLD)} เพื่อสลับผู้ให้บริการ/โมเดล (1-2-3-4)
+พิมพ์ {color('/update', Colors.BOLD)} เพื่อตรวจหาอัปเดตเวอร์ชัน | {color('/exit', Colors.RED)} เพื่อออก
 """
         safe_print(banner)
 
@@ -116,14 +349,50 @@ class MaxTerminalApp:
             safe_print(color("🧹 เคลียร์ประวัติการสนทนาเรียบร้อยแล้ว", Colors.GREEN))
             return True
 
+        elif action in {"/update", "/upgrade"}:
+            self.check_and_perform_update()
+            return True
+
+        elif action in {"/setup", "/config", "/wizard"}:
+            self.interactive_setup(is_first_time=False)
+            return True
+
+        elif action == "/key":
+            if len(parts) > 1:
+                key_val = parts[1].strip()
+            else:
+                cur_key = self.active_profile.get("api_key", "")
+                masked = (cur_key[:6] + "..." + cur_key[-4:]) if len(cur_key) > 10 else cur_key
+                key_val = input(f"กรุณากรอก API Key ใหม่สำหรับ [{self.active_profile['name']}] (ปัจจุบัน: {masked}): ").strip()
+
+            if key_val:
+                self.active_profile["api_key"] = key_val
+                self._save_profiles()
+                safe_print(color("✅ บันทึก API Key เรียบร้อยแล้ว", Colors.GREEN))
+            return True
+
+        elif action in {"/baseurl", "/url"}:
+            if len(parts) > 1:
+                url_val = parts[1].strip()
+            else:
+                url_val = input(f"กรุณากรอก Base URL ใหม่สำหรับ [{self.active_profile['name']}] (ปัจจุบัน: {self.active_profile.get('base_url')}): ").strip()
+            if url_val:
+                self.active_profile["base_url"] = url_val
+                self._save_profiles()
+                safe_print(color(f"✅ บันทึก Base URL: {url_val}", Colors.GREEN))
+            return True
+
         elif action == "/help":
             safe_print(f"""
 {color("คำสั่งที่ใช้งานได้ (Terminal Commands):", Colors.BOLD)}
-  {color('/help', Colors.CYAN)}                  - แสดงคำแนะนำการใช้งาน
+  {color('/setup', Colors.CYAN)}                  - ตัวช่วยเลือกผู้ให้บริการ & โมเดล (โหมด 1-2-3-4)
+  {color('/update', Colors.CYAN)}                 - ตรวจสอบและอัปเดตเวอร์ชันโปรแกรมอัตโนมัติ
+  {color('/key <api_key>', Colors.CYAN)}          - กรอกหรือแก้ไข API Key ทันทีในแชท
+  {color('/baseurl <url>', Colors.CYAN)}          - กรอกหรือแก้ไข Base URL ทันทีในแชท
   {color('/profiles', Colors.CYAN)}              - ดูรายชื่อ Provider Profiles ทั้งหมด
-  {color('/profile <name>', Colors.CYAN)}        - สลับไปใช้ Profile ที่ต้องการ
+  {color('/profile [name|number]', Colors.CYAN)} - สลับ Profile ด้วยชื่อหรือหมายเลข
   {color('/models', Colors.CYAN)}                - ดูรายชื่อโมเดลใน Profile ปัจจุบัน
-  {color('/model <name>', Colors.CYAN)}          - เปลี่ยนโมเดลที่ใช้งาน
+  {color('/model [name|number]', Colors.CYAN)}   - เปลี่ยนโมเดลที่ใช้งาน
   {color('/tools', Colors.CYAN)}                 - แสดงรายการเครื่องมือทั้งหมด ({len(self.mcp_manager.get_all_tools())} tools)
   {color('/health', Colors.CYAN)}                - ทดสอบสถานะการเชื่อมต่อ API / Ping
   {color('/clear', Colors.CYAN)}                 - เคลียร์ประวัติการสนทนา
@@ -133,44 +402,77 @@ class MaxTerminalApp:
 
         elif action == "/profiles":
             safe_print(color("\n📌 รายการ Provider Profiles:", Colors.BOLD))
-            for p in self.profiles:
+            for idx, p in enumerate(self.profiles, 1):
                 is_active = p["id"] == self.selected_profile_id
                 marker = color("▶ [ACTIVE]", Colors.GREEN + Colors.BOLD) if is_active else " "
-                safe_print(f"  {marker} {p['name']} ({p.get('base_url', '')}) -> Model: {p.get('model', '')}")
+                safe_print(f"  [{idx}] {marker} {p['name']} ({p.get('base_url', '')}) -> Model: {p.get('model', '')}")
             safe_print()
             return True
 
         elif action == "/profile":
             if len(parts) < 2:
-                safe_print(color("กรุณาระบุชื่อโปรไฟล์ เช่น /profile Claude Native", Colors.YELLOW))
+                # Interactive switch
+                self.interactive_setup(is_first_time=False)
                 return True
-            target_name = " ".join(parts[1:]).strip().casefold()
-            match = next((p for p in self.profiles if p["name"].casefold() == target_name or p["id"].casefold() == target_name), None)
+            target = " ".join(parts[1:]).strip()
+            if target.isdigit():
+                val = int(target)
+                if 1 <= val <= len(self.profiles):
+                    match = self.profiles[val - 1]
+                else:
+                    safe_print(color(f"❌ หมายเลขโปรไฟล์ต้องอยู่ระหว่าง 1 ถึง {len(self.profiles)}", Colors.RED))
+                    return True
+            else:
+                match = next((p for p in self.profiles if p["name"].casefold() == target.casefold() or p["id"].casefold() == target.casefold()), None)
+
             if match:
                 self.selected_profile_id = match["id"]
                 self.active_profile = match
-                self.settings_store.save_provider_settings(self.profiles, self.selected_profile_id, remember=True)
+                self._save_profiles()
                 safe_print(color(f"✅ สลับไปใช้ Profile: {match['name']} (Model: {match['model']})", Colors.GREEN))
             else:
-                safe_print(color(f"❌ ไม่พบ Profile '{' '.join(parts[1:])}'", Colors.RED))
+                safe_print(color(f"❌ ไม่พบ Profile '{target}'", Colors.RED))
             return True
 
         elif action == "/models":
             safe_print(color(f"\n🤖 รายชื่อโมเดลสำหรับ {self.active_profile['name']}:", Colors.BOLD))
-            for m in self.active_profile.get("models", []):
+            for idx, m in enumerate(self.active_profile.get("models", []), 1):
                 is_cur = m == self.active_profile.get("model")
                 marker = color("▶", Colors.GREEN) if is_cur else " "
-                safe_print(f"  {marker} {m}")
+                safe_print(f"  [{idx}] {marker} {m}")
             safe_print()
             return True
 
         elif action == "/model":
+            models = self.active_profile.get("models", [])
             if len(parts) < 2:
-                safe_print(color("กรุณาระบุชื่อโมเดล เช่น /model claude-sonnet-4-6", Colors.YELLOW))
-                return True
-            model_name = parts[1].strip()
+                # Print numbered list and prompt
+                safe_print(color(f"\n🤖 กรุณาเลือกโมเดลสำหรับ {self.active_profile['name']}:", Colors.BOLD))
+                for idx, m in enumerate(models, 1):
+                    is_cur = m == self.active_profile.get("model")
+                    marker = color("▶", Colors.GREEN) if is_cur else " "
+                    safe_print(f"  [{idx}] {marker} {m}")
+                m_in = input(color("\nพิมพ์หมายเลขหรือชื่อโมเดล: ", Colors.BOLD + Colors.CYAN)).strip()
+                if not m_in:
+                    return True
+                target = m_in
+            else:
+                target = parts[1].strip()
+
+            if target.isdigit():
+                val = int(target)
+                if 1 <= val <= len(models):
+                    model_name = models[val - 1]
+                else:
+                    safe_print(color(f"❌ หมายเลขต้องอยู่ระหว่าง 1 ถึง {len(models)}", Colors.RED))
+                    return True
+            else:
+                model_name = target
+                if model_name not in models:
+                    models.insert(0, model_name)
+
             self.active_profile["model"] = model_name
-            self.settings_store.save_provider_settings(self.profiles, self.selected_profile_id, remember=True)
+            self._save_profiles()
             safe_print(color(f"✅ เปลี่ยนโมเดลเป็น: {model_name}", Colors.GREEN))
             return True
 
@@ -183,6 +485,7 @@ class MaxTerminalApp:
             return True
 
         elif action == "/health":
+            self._ensure_credentials()
             safe_print(color(f"⚡ กำลังทดสอบสถานะ {self.active_profile['name']}...", Colors.YELLOW))
             client = self._create_client()
             start = time.monotonic()
@@ -199,6 +502,7 @@ class MaxTerminalApp:
 
     def run_prompt_single(self, prompt: str) -> None:
         """Execute single prompt and exit."""
+        self._ensure_credentials()
         client = self._create_client()
         tools = self.mcp_manager.get_openai_tools() if (self.mcp_manager.enabled and client.api_mode != "responses") else None
 
@@ -217,6 +521,9 @@ class MaxTerminalApp:
 
     def interactive_loop(self) -> None:
         """Main terminal interactive prompt loop."""
+        if self.is_first_run:
+            self.interactive_setup(is_first_time=True)
+
         self.print_banner()
 
         while True:
@@ -229,6 +536,9 @@ class MaxTerminalApp:
                 if user_input.startswith("/"):
                     if self.handle_command(user_input):
                         continue
+
+                # Ensure API credentials exist before sending request
+                self._ensure_credentials()
 
                 # Run conversation
                 client = self._create_client()
@@ -276,11 +586,21 @@ def run_cli(args: Optional[list[str]] = None) -> None:
     parser.add_argument("-p", "--prompt", type=str, help="รันคำสั่งเดียวแบบ Single-shot แล้วแสดงผลลัพธ์")
     parser.add_argument("-m", "--model", type=str, help="ระบุโมเดลที่ต้องการใช้งาน")
     parser.add_argument("-c", "--cli", action="store_true", help="เปิดโหมด Terminal Interactive CLI")
+    parser.add_argument("-u", "--update", action="store_true", help="ตรวจหาและอัปเดตเวอร์ชันโปรแกรม")
+    parser.add_argument("-s", "--setup", action="store_true", help="เปิดหน้าต่างตั้งค่า Provider และ Model")
     parsed, remaining = parser.parse_known_args(args)
 
     app = MaxTerminalApp()
     if parsed.model:
         app.active_profile["model"] = parsed.model
+
+    if parsed.update:
+        app.check_and_perform_update()
+        return
+
+    if parsed.setup:
+        app.interactive_setup(is_first_time=False)
+        return
 
     if parsed.prompt:
         app.run_prompt_single(parsed.prompt)
