@@ -7,10 +7,20 @@ import sys
 import traceback
 from pathlib import Path
 
-# Ensure root directory is always in sys.path
+# Ensure root directory and src directory are always in sys.path
 _ROOT = str(Path(__file__).resolve().parent)
-if _ROOT not in sys.path:
-    sys.path.insert(0, _ROOT)
+_SRC = str(Path(__file__).resolve().parent / "src")
+for _p in (_ROOT, _SRC):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+try:
+    from cli import run_cli
+    from ui.main_window import main as run_gui
+except (ImportError, ModuleNotFoundError):
+    from src.cli import run_cli  # type: ignore[no-redef]
+    from src.ui.main_window import main as run_gui  # type: ignore[no-redef]
+
 
 def is_headless() -> bool:
     """Check if environment lacks GUI display (Linux headless, Docker, Termux)."""
@@ -26,17 +36,14 @@ if __name__ == "__main__":
 
     # If CLI flags passed or running in headless environment
     if any(flag in args for flag in cli_flags) or is_headless():
-        from src.cli import run_cli
         run_cli(args)
     else:
         try:
-            from src.ui.main_window import main
-            main()
+            run_gui()
         except Exception as e:
             # Fallback to CLI if GUI initialization fails (e.g. Tkinter / Display errors)
             if "display" in str(e).lower() or "tkinter" in str(e).lower() or "_tkinter" in str(e).lower():
                 print(f"[info] No GUI display detected. Starting MAX in Terminal CLI mode...")
-                from src.cli import run_cli
                 run_cli(args)
             else:
                 traceback.print_exc()
