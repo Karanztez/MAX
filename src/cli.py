@@ -19,19 +19,34 @@ _ROOT = str(Path(__file__).resolve().parent.parent)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from src.core.ai_client import AIClient
-from src.core.mcp_manager import MCPManager
-from src.core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile
-from src.core.settings_store import SettingsStore
-from src.core.skill_manager import SkillManager
-from src.core.updater import (
-    APP_VERSION,
-    check_github_release,
-    is_newer_version,
-    is_frozen_exe,
-    download_file,
-    apply_exe_update_and_restart,
-)
+try:
+    from src.core.ai_client import AIClient
+    from src.core.mcp_manager import MCPManager
+    from src.core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile
+    from src.core.settings_store import SettingsStore
+    from src.core.skill_manager import SkillManager
+    from src.core.updater import (
+        APP_VERSION,
+        check_github_release,
+        is_newer_version,
+        is_frozen_exe,
+        download_file,
+        apply_exe_update_and_restart,
+    )
+except (ImportError, ModuleNotFoundError):
+    from core.ai_client import AIClient  # type: ignore[no-redef]
+    from core.mcp_manager import MCPManager  # type: ignore[no-redef]
+    from core.provider_profiles import default_profiles, normalize_profiles, new_custom_profile  # type: ignore[no-redef]
+    from core.settings_store import SettingsStore  # type: ignore[no-redef]
+    from core.skill_manager import SkillManager  # type: ignore[no-redef]
+    from core.updater import (  # type: ignore[no-redef]
+        APP_VERSION,
+        check_github_release,
+        is_newer_version,
+        is_frozen_exe,
+        download_file,
+        apply_exe_update_and_restart,
+    )
 
 
 # ─── ANSI Terminal Colors ───────────────────────────────────────────────────────

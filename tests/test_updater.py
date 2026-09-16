@@ -9,13 +9,22 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.core.updater import (
-    parse_version_tuple,
-    is_newer_version,
-    UpdateInfo,
-    APP_VERSION,
-)
-from src.core.settings_store import SettingsStore
+try:
+    from src.core.updater import (
+        parse_version_tuple,
+        is_newer_version,
+        UpdateInfo,
+        APP_VERSION,
+    )
+    from src.core.settings_store import SettingsStore
+except (ImportError, ModuleNotFoundError):
+    from core.updater import (  # type: ignore[no-redef]
+        parse_version_tuple,
+        is_newer_version,
+        UpdateInfo,
+        APP_VERSION,
+    )
+    from core.settings_store import SettingsStore  # type: ignore[no-redef]
 
 
 class TestUpdater(unittest.TestCase):

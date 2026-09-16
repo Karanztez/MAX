@@ -16,3 +16,16 @@ dependencies = [
 [project.scripts]
 max = "src.cli:run_cli"
 max-gui = "src.ui.main_window:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pyright]
+extraPaths = ["."]
+include = ["src", "tests", "scripts", "main.py"]
+
+[tool.pyrefly]
+project-root = "."
+search-paths = [".", "src"]
+extra-paths = ["."]

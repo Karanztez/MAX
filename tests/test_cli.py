@@ -11,8 +11,12 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.cli import MaxTerminalApp
-from src.core.settings_store import SettingsStore
+try:
+    from src.cli import MaxTerminalApp
+    from src.core.settings_store import SettingsStore
+except (ImportError, ModuleNotFoundError):
+    from cli import MaxTerminalApp  # type: ignore[no-redef]
+    from core.settings_store import SettingsStore  # type: ignore[no-redef]
 
 
 class TestCli(unittest.TestCase):
