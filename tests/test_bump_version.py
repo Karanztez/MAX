@@ -2,17 +2,30 @@
 tests/test_bump_version.py — Unit tests for bump_version script logic.
 """
 
+import importlib.util
 import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+# Ensure project root is on sys.path
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
-from scripts.bump_version import (
-    bump_semver,
-    get_current_version,
-    extract_release_notes,
-)
+# Load scripts/bump_version.py dynamically to be robust in all test runner environments
+_script_file = _PROJECT_ROOT / "scripts" / "bump_version.py"
+_spec = importlib.util.spec_from_file_location("scripts.bump_version", _script_file)
+if _spec and _spec.loader:
+    _bump_mod = importlib.util.module_from_spec(_spec)
+    sys.modules["scripts.bump_version"] = _bump_mod
+    _spec.loader.exec_module(_bump_mod)
+else:
+    raise ImportError(f"Cannot load {_script_file}")
+
+bump_semver = _bump_mod.bump_semver
+get_current_version = _bump_mod.get_current_version
+extract_release_notes = _bump_mod.extract_release_notes
+update_changelog = _bump_mod.update_changelog
 
 
 class TestBumpVersion(unittest.TestCase):
@@ -42,7 +55,6 @@ class TestBumpVersion(unittest.TestCase):
         self.assertTrue(len(notes) > 0)
 
     def test_update_changelog(self) -> None:
-        from scripts.bump_version import update_changelog
         # Should not raise exception
         update_changelog("1.0.1")
 

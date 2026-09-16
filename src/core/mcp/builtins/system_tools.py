@@ -24,6 +24,11 @@ try:
 except (ImportError, ModuleNotFoundError):
     from src.core.mcp.types import MCPTool  # type: ignore[no-redef]
 
+try:
+    import psutil  # type: ignore[import-untyped]
+except ImportError:
+    psutil = None  # type: ignore[assignment]
+
 
 _BACKGROUND_TASKS: dict[str, dict[str, Any]] = {}
 
@@ -71,13 +76,7 @@ def _builtin_get_current_time(timezone: str = "local") -> str:
 def _builtin_system_info() -> str:
     """Get CPU, Memory, Disk, and OS hardware info with safe standard library fallback."""
     os_info = f"💻 OS: {platform.system()} {platform.release()} ({platform.machine()})\n🐍 Python: {platform.python_version()}"
-    try:
-        import psutil  # type: ignore[import-untyped]
-        has_psutil = True
-    except ImportError:
-        has_psutil = False
-
-    if not has_psutil:
+    if psutil is None:
         cpu_count = os.cpu_count() or 1
         return f"{os_info}\n⚡ CPU: {cpu_count} Cores"
 
