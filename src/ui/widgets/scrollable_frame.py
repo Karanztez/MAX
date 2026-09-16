@@ -5,7 +5,11 @@ scrollable_frame.py — Reusable smooth-scrolling frame widget.
 import tkinter as tk
 from tkinter import ttk
 from typing import Any
-from src.ui.themes import T
+
+try:
+    from ui.themes import T
+except (ImportError, ModuleNotFoundError):
+    from src.ui.themes import T  # type: ignore[no-redef]
 
 
 class ScrollableFrame(tk.Frame):
