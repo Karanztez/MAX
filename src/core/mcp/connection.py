@@ -65,7 +65,7 @@ class MCPServerConnection:
                 init_res = self._send_request("initialize", {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {"tools": {}},
-                    "clientInfo": {"name": "MaxPlusAI", "version": "1.0.8"},
+                    "clientInfo": {"name": "MaxPlusAI", "version": "1.0.9"},
                 })
                 if not init_res or "error" in init_res:
                     err = init_res.get("error", {}).get("message", "Handshake failed") if init_res else "Timeout"
