@@ -38,6 +38,7 @@ try:
     from ui.dialogs.mcp_dialog import MCPManagerDialog
     from ui.dialogs.update_dialog import UpdateDialog
     from ui.dialogs.health_dialog import HealthCheckDialog
+    from core.mcp.builtins.workspace_tools import set_workspace_ui_dispatcher
 except (ImportError, ModuleNotFoundError):
     from src.core.provider_profiles import default_profiles, normalize_profiles  # type: ignore[no-redef]
     from src.core.settings_store import SettingsStore  # type: ignore[no-redef]
@@ -52,6 +53,7 @@ except (ImportError, ModuleNotFoundError):
     from src.ui.dialogs.mcp_dialog import MCPManagerDialog  # type: ignore[no-redef]
     from src.ui.dialogs.update_dialog import UpdateDialog  # type: ignore[no-redef]
     from src.ui.dialogs.health_dialog import HealthCheckDialog  # type: ignore[no-redef]
+    from src.core.mcp.builtins.workspace_tools import set_workspace_ui_dispatcher  # type: ignore[no-redef]
 
 
 
@@ -83,6 +85,7 @@ class MaxPlusGUI(tk.Tk):
         self._tray_queue: queue.Queue[str] = queue.Queue()
         self.settings_store = SettingsStore()
         self.mcp_manager = MCPManager()
+        set_workspace_ui_dispatcher(self._handle_workspace_tool)
         self.profiles, self.selected_profile_id = self.settings_store.load_provider_settings(default_profiles())
         self.api_key = self._active_profile()["api_key"]
         self._changing_provider = False
@@ -311,6 +314,110 @@ class MaxPlusGUI(tk.Tk):
         self._tabs.append(tab)
         self.notebook.add(tab, text=f" {tab_title} ")
         self.notebook.select(tab)
+
+    def _handle_workspace_tool(self, action: str, args: dict[str, Any]) -> str:
+        """Handle AI requests to create a new Tab or Team Room with explicit user confirmation."""
+        result_holder: list[str] = []
+        done_event = threading.Event()
+
+        def _gui_action() -> None:
+            try:
+                if action == "create_chat_tab":
+                    tab_name = str(args.get("tab_name") or "New Chat").strip()
+                    reason = str(args.get("reason") or "แยกเซสชันการทำงาน").strip()
+                    sys_prompt = str(args.get("system_prompt") or "").strip()
+
+                    # 1. Ask explicit user confirmation
+                    allowed = messagebox.askyesno(
+                        "AI ขออนุญาตสร้างแท็บใหม่",
+                        f"🤖 AI ต้องการสร้างแท็บสนทนาใหม่: '{tab_name}'\n"
+                        f"📌 เหตุผล: {reason}\n\n"
+                        f"คุณอนุญาตให้สร้างแท็บนี้หรือไม่?\n"
+                        f"(หลังจากสร้าง ระบบจะเลือกแท็บนี้ให้คุณตั้งค่าผู้ให้บริการและโมเดลเอง)",
+                        parent=self,
+                    )
+                    if not allowed:
+                        result_holder.append(f"ผู้ใช้ไม่อนุญาตให้สร้างแท็บ '{tab_name}'")
+                        return
+
+                    # 2. Create tab
+                    profile = self._active_profile()
+                    chat_count = sum(1 for t in self._tabs if isinstance(t, ChatTab)) + 1
+                    actual_name = tab_name if tab_name else f"Chat {chat_count}"
+                    tab = ChatTab(
+                        self.notebook,
+                        tab_name=actual_name,
+                        api_key=profile["api_key"],
+                        base_url=profile["base_url"],
+                        model=profile["model"],
+                        api_mode=profile["api_mode"],
+                        profile_id=profile["id"],
+                        profile_name=profile["name"],
+                    )
+                    if sys_prompt:
+                        tab.sys_entry.delete(0, "end")
+                        tab.sys_entry.insert(0, sys_prompt)
+
+                    self._tabs.append(tab)
+                    self.notebook.add(tab, text=f"  {actual_name}  ")
+                    self.notebook.select(tab)
+
+                    tab.status_var.set("สร้างแท็บตามคำขอแล้ว — กรุณาเลือกผู้ให้บริการและโมเดลด้านบนตามต้องการ")
+                    result_holder.append(
+                        f"สร้างแท็บ '{actual_name}' สำเร็จแล้ว และเปิดให้ผู้ใช้เลือกผู้ให้บริการและโมเดลสำหรับแท็บนี้ด้วยตนเองเรียบร้อยแล้ว"
+                    )
+
+                elif action == "create_team_room":
+                    team_name = str(args.get("team_name") or "👥 Team Room").strip()
+                    reason = str(args.get("reason") or "ระดมทีม AI ช่วยงาน").strip()
+                    goal = str(args.get("goal") or "").strip()
+
+                    # 1. Ask explicit user confirmation
+                    allowed = messagebox.askyesno(
+                        "AI ขออนุญาตสร้างห้องทีม AI",
+                        f"🤖 AI ต้องการสร้างห้องทีม (Multi-Agent Team Room): '{team_name}'\n"
+                        f"📌 เหตุผล/เป้าหมาย: {reason}\n\n"
+                        f"คุณอนุญาตให้สร้างห้องทีมนี้หรือไม่?\n"
+                        f"(ระบบจะเปิดหน้าต่างตั้งค่าสมาชิก เพื่อให้คุณเลือกผู้ให้บริการและโมเดลของแต่ละบทบาทด้วยตนเอง)",
+                        parent=self,
+                    )
+                    if not allowed:
+                        result_holder.append(f"ผู้ใช้ไม่อนุญาตให้สร้างห้องทีม '{team_name}'")
+                        return
+
+                    # 2. Create Team Room tab
+                    team_count = sum(1 for t in self._tabs if isinstance(t, AgentTeamTab)) + 1
+                    actual_name = team_name if team_name else f"👥 Team {team_count}"
+                    tab = AgentTeamTab(
+                        self.notebook,
+                        tab_name=actual_name,
+                        profiles=self.profiles,
+                        default_profile_id=self.selected_profile_id,
+                    )
+                    if goal and hasattr(tab, "entry"):
+                        tab.entry.insert(0, goal)
+
+                    self._tabs.append(tab)
+                    self.notebook.add(tab, text=f" {actual_name} ")
+                    self.notebook.select(tab)
+
+                    # Open team configuration dialog so user configures models/providers themselves!
+                    tab._open_team_config()
+
+                    result_holder.append(
+                        f"สร้างห้องทีม '{actual_name}' สำเร็จ และเปิดหน้าต่างให้ผู้ใช้ตั้งค่าสมาชิก/ผู้ให้บริการ/โมเดลเรียบร้อยแล้ว"
+                    )
+                else:
+                    result_holder.append(f"Unknown workspace tool action: {action}")
+            except Exception as ex:
+                result_holder.append(f"เกิดข้อผิดพลาดในการสร้างแท็บหรือห้องทีม: {ex}")
+            finally:
+                done_event.set()
+
+        self.after(0, _gui_action)
+        # Wait for user confirmation in modal
+        done_event.wait(timeout=120)
+        return result_holder[0] if result_holder else "การดำเนินการหมดเวลา (ผู้ใช้ยังไม่ได้ตอบรับ)"
 
     def _on_tab_switched(self, _event: object = None) -> None:
         tab = self._current_tab()

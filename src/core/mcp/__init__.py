@@ -62,6 +62,12 @@ from .builtins.web_tools import (
     get_web_tools,
     set_web_permission_handler,
 )
+from .builtins.workspace_tools import (
+    _builtin_create_chat_tab,
+    _builtin_create_team_room,
+    get_workspace_tools,
+    set_workspace_ui_dispatcher,
+)
 from .connection import MCPServerConnection
 from .diff_engine import DiffColors, render_diff, replace_content_chunk
 from .manager import MCPManager

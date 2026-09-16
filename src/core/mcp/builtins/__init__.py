@@ -11,6 +11,7 @@ from .skill_tools import get_skill_tools
 from .system_tools import get_system_tools
 from .teamai_tools import get_teamai_tools
 from .web_tools import get_web_tools
+from .workspace_tools import get_workspace_tools
 
 
 def get_all_builtin_tools() -> dict[str, tuple[Any, Any]]:
@@ -23,4 +24,5 @@ def get_all_builtin_tools() -> dict[str, tuple[Any, Any]]:
     tools.update(get_git_tools())
     tools.update(get_skill_tools())
     tools.update(get_teamai_tools())
+    tools.update(get_workspace_tools())
     return tools
