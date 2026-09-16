@@ -8,7 +8,9 @@ import os
 import shutil
 import tempfile
 import time
+import urllib.error
 import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Any, Optional
 
@@ -87,9 +89,6 @@ def _builtin_generate_image(
     negative_prompt: str = "",
 ) -> str:
     """Generate high-resolution AI image and save to disk."""
-    import urllib.request
-    import urllib.error
-
     p = prompt.strip()
     if not p:
         return "Error: Prompt cannot be empty"
@@ -143,9 +142,6 @@ def _builtin_generate_video(
     model: str = "wan2.1",
 ) -> str:
     """Generate short AI video/animation and save to disk."""
-    import urllib.request
-    import urllib.error
-
     p = prompt.strip()
     if not p:
         return "Error: Prompt cannot be empty"
