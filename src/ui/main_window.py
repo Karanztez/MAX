@@ -22,7 +22,7 @@ except ImportError:
 try:
     pystray = importlib.import_module("pystray")
     _TRAY_OK = True
-except ImportError:
+except (ImportError, Exception):
     pystray = None
     _TRAY_OK = False
 
