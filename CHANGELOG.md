@@ -9,6 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [v1.0.2] - 2026-09-16
+
+### Added
+
+- **Multi-Agent Team Room (`AgentTeamTab`, `/team`)**:
+  - Dedicated collaborative multi-agent workspace with default roles: 📋 **Planner / Architect**, 💻 **Coder / Developer**, and 🔍 **Reviewer / QA Auditor**.
+  - Pipeline orchestration passing specifications and code sequentially between team agents with live streaming output.
+  - **Team Configuration Dialog (`TeamConfigDialog`)** allowing custom toggles, provider profiles, models, temperatures, and system prompts per agent.
+  - In-chat stop button (`⏹ หยุด`) to cancel execution mid-turn gracefully.
+- **Per-Tab Provider, Model & API Base Independence**:
+  - Each chat tab (`ChatTab`) now stores its own `profile_id` and `model` independently.
+  - Top toolbar provider dropdown automatically syncs to the active tab upon tab switching without interfering with other tabs.
+- **MAX Virtual Screens Architecture (`ScreenManager`, Sequential IDs `1`, `2`, `3`, `4`...)**:
+  - Virtual screen manager ([`src/core/screen_manager.py`](file:///c:/Users/ACER/IdeaProjects/MAX/src/core/screen_manager.py)) assigning sequential numeric IDs for intuitive terminal navigation.
+  - Isolated screen state holding role, custom model, profile ID, system prompt, and message history per screen.
+- **CLI Virtual Screen Navigation (`/screen`, `/screens`)**:
+  - `/screens` or `/screen list`: Beautiful ASCII table of all screens, roles, models, pipeline links, and message counts.
+  - `/screen 1`, `/screen 2`, `/screen 3`: Instant screen switching with dynamic prompt indicator (e.g. `[1:Planner] You: `) and recent message summary.
+  - `/screen create <name> [role] [model]`: Create new screens with auto-assigned IDs.
+  - `/screen link <from_id> <to_id>`: Link screens together into an automated data pipeline.
+  - `/screen unlink <id>` / `/screen close <id>`: Unlink or close screens.
+- **CLI Team Pipeline Commands (`/team init`, `/team run <prompt>`, `/team status`)**:
+  - `/team init`: Auto-scaffold Screen 1 (Planner) ➔ Screen 2 (Coder) ➔ Screen 3 (Reviewer) with configured links.
+  - `/team run <prompt>`: Execute linked multi-agent team pipeline in the terminal with live streaming output and screen history persistence.
+  - `/team status`: Inspect current team screens and pipeline links.
+- **Autonomous AI MCP Tools for Screens & Workspaces**:
+  - `create_chat_tab` and `create_team_room`: AI tools proposing new tabs or team rooms with explicit user approval dialog.
+  - `screen_list`, `screen_create`, `screen_switch`, `screen_link`: MCP tools allowing AI agents to query, create, switch, and link virtual screens autonomously.
+- **Comprehensive Verification & Type Safety**:
+  - Added unit test suites [`tests/test_team_room.py`](file:///c:/Users/ACER/IdeaProjects/MAX/tests/test_team_room.py), [`tests/test_workspace_tools.py`](file:///c:/Users/ACER/IdeaProjects/MAX/tests/test_workspace_tools.py), and [`tests/test_screen_manager.py`](file:///c:/Users/ACER/IdeaProjects/MAX/tests/test_screen_manager.py).
+  - 104 out of 104 unit tests passing with zero Pyrefly diagnostic warnings.
+
 - **Software License & Terms of Use (`LICENSE`)**: Added Non-Commercial Proprietary License with permission-only commercial use (ไม่อนุญาตให้นำไปจำหน่ายหรือใช้ในเชิงพาณิชย์โดยไม่ได้รับอนุญาตเป็นลายลักษณ์อักษรจากเจ้าของลิขสิทธิ์ Karanztez).
 - **Gemini / Antigravity Style Code Diff & Editing Engine (`replace_file_content`, `diff_engine`)**: Added precision surgical code replacement tools and colorized terminal/GUI unified diff renderer showing line-by-line green `+` additions and red `-` deletions with line numbers and diff blocks.
 - **Modular MCP Package Architecture (`src/core/mcp/`)**: Decomposed the monolithic 2,100+ line `mcp_manager.py` into dedicated, maintainable sub-modules (`builtins/file_tools.py`, `web_tools.py`, `git_tools.py`, `media_tools.py`, `system_tools.py`, `skill_tools.py`, `connection.py`, `diff_engine.py`, `manager.py`) while preserving 100% backward-compatible facade re-exports and resolving Pyrefly import diagnostics.
