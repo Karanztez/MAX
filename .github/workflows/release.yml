@@ -107,17 +107,21 @@ jobs:
       - name: Run unit tests
         env:
           PYTHONPATH: src;.
+        run: |
+          python -m unittest discover -v -s tests -p "test_*.py"
+
+      - name: Push debug log on failure
+        if: failure()
         shell: pwsh
         run: |
-          $testOutput = python -m unittest discover -v -s tests -p "test_*.py" 2>&1 | Out-String
-          Write-Host $testOutput
-          if ($LASTEXITCODE -ne 0) {
-            "## ❌ Unit Tests Failed" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-            "```" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-            $testOutput | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-            "```" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-            exit 1
-          }
+          python -m unittest discover -v -s tests -p "test_*.py" > test_results.txt 2>&1
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B ci-debug
+          git add -f test_results.txt
+          git commit -m "ci: debug test results"
+          git push origin ci-debug --force
+
 
 
       - name: Build MaxPlusAI.exe
