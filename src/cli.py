@@ -506,11 +506,47 @@ class MaxTerminalApp:
 """)
             return True
 
+        elif action in {"/skills", "/skill"}:
+            sub = parts[1].lower() if len(parts) > 1 else "list"
+
+            if sub in {"install", "add"} and len(parts) > 2:
+                src_target = parts[2].strip()
+                custom_sid = parts[3].strip() if len(parts) > 3 else ""
+                safe_print(color(f"📦 กำลังติดตั้ง Skill จาก: {src_target}...", Colors.YELLOW))
+                res = self.mcp_manager.execute_tool("install_skill", {"source": src_target, "skill_id": custom_sid})
+                safe_print(color(f"{res}", Colors.GREEN if "สำเร็จ" in res or "✅" in res else Colors.RED))
+                return True
+
+            elif sub in {"remove", "delete", "rm"} and len(parts) > 2:
+                target_sid = parts[2].strip()
+                safe_print(color(f"🗑️ กำลังลบ Skill: {target_sid}...", Colors.YELLOW))
+                res = self.mcp_manager.execute_tool("remove_skill", {"skill_id": target_sid})
+                safe_print(color(f"{res}", Colors.GREEN if "สำเร็จ" in res or "🗑️" in res else Colors.RED))
+                return True
+
+            elif sub in {"list", "ls", "all"}:
+                res = self.mcp_manager.execute_tool("list_skills", {})
+                safe_print(color(f"\n{res}", Colors.CYAN))
+                safe_print(f"""
+{color('คำสั่งจัดการ Skill:', Colors.BOLD)}
+  {color('/skill install <owner/repo | url | skill_name>', Colors.CYAN)} - ติดตั้ง Skill อัตโนมัติจาก GitHub / URL
+  {color('/skill remove <skill_id>', Colors.CYAN)}                     - ลบ Skill ออกจากระบบ
+  {color('/skills', Colors.CYAN)}                                       - ดูรายการ Skill ทั้งหมด
+""")
+                return True
+            else:
+                res = self.mcp_manager.execute_tool("list_skills", {})
+                safe_print(color(f"\n{res}", Colors.CYAN))
+                return True
+
         elif action == "/help":
             safe_print(f"""
 {color("คำสั่งที่ใช้งานได้ (Terminal Commands):", Colors.BOLD)}
   {color('/setup', Colors.CYAN)}                  - ตัวช่วยเลือกผู้ให้บริการ & โมเดล (โหมด 1-2-3-4)
   {color('/security', Colors.CYAN)}               - ตรวจสอบ/จัดการสิทธิ์การเข้าถึงเว็บไซต์ (Web Security)
+  {color('/skills', Colors.CYAN)}                 - แสดงรายการ ทักษะ (Skills) ที่ติดตั้งอยู่ในระบบ
+  {color('/skill install <source>', Colors.CYAN)}  - ติดตั้ง Skill ใหม่จาก GitHub / URL อัตโนมัติ
+  {color('/skill remove <id>', Colors.CYAN)}       - ลบ Skill ออกจากระบบ
   {color('/image <prompt>', Colors.CYAN)}        - สร้างรูปภาพ AI (Flux / Turbo / DALL-E) บันทึกลงเครื่อง
   {color('/video <prompt>', Colors.CYAN)}        - สร้างคลิปวิดีโอ AI (Wan2.1 / MP4) บันทึกลงเครื่อง
   {color('/export [path]', Colors.CYAN)}          - บีบอัดและส่งออกโปรเจกต์ไปยังโฟลเดอร์ Download ของมือถือ/เครื่อง
