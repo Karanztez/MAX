@@ -69,8 +69,18 @@ def _builtin_get_current_time(timezone: str = "local") -> str:
 
 
 def _builtin_system_info() -> str:
-    """Get CPU, Memory, Disk, and OS hardware info."""
-    import psutil  # type: ignore[import-untyped]
+    """Get CPU, Memory, Disk, and OS hardware info with safe standard library fallback."""
+    os_info = f"💻 OS: {platform.system()} {platform.release()} ({platform.machine()})\n🐍 Python: {platform.python_version()}"
+    try:
+        import psutil  # type: ignore[import-untyped]
+        has_psutil = True
+    except ImportError:
+        has_psutil = False
+
+    if not has_psutil:
+        cpu_count = os.cpu_count() or 1
+        return f"{os_info}\n⚡ CPU: {cpu_count} Cores"
+
     try:
         mem = psutil.virtual_memory()
         disk = psutil.disk_usage(os.path.abspath(os.sep))
@@ -78,14 +88,13 @@ def _builtin_system_info() -> str:
         cpu_count = psutil.cpu_count(logical=True)
 
         return (
-            f"💻 OS: {platform.system()} {platform.release()} ({platform.machine()})\n"
-            f"🐍 Python: {platform.python_version()}\n"
+            f"{os_info}\n"
             f"⚡ CPU: {cpu_count} Cores ({cpu_pct}% Usage)\n"
             f"🧠 RAM: {mem.used / (1024**3):.1f} GB / {mem.total / (1024**3):.1f} GB ({mem.percent}%)\n"
             f"💾 Disk ({os.path.abspath(os.sep)}): {disk.used / (1024**3):.1f} GB / {disk.total / (1024**3):.1f} GB ({disk.percent}%)"
         )
     except Exception as ex:
-        return f"Error gathering system info: {ex}"
+        return f"{os_info}\n(Detailed hardware stats unavailable: {ex})"
 
 
 def _builtin_run_command(command: str, timeout_seconds: int = 30, background: bool = False) -> str:

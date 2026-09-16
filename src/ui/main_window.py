@@ -447,7 +447,8 @@ class MaxPlusGUI(tk.Tk):
 
         norm_path = os.path.abspath(file_path)
         for t in self._tabs:
-            if isinstance(t, MediaViewerTab) and os.path.abspath(t.file_path) == norm_path:
+            tab_path = getattr(t, "file_path", None)
+            if tab_path and os.path.abspath(tab_path) == norm_path:
                 self.notebook.select(t)
                 return t
 

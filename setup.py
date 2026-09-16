@@ -19,6 +19,7 @@ setup(
     install_requires=[
         "Pillow>=10.0.0",
         "pystray>=0.19.5; sys_platform == 'win32'",
+        "psutil>=5.9.0",
     ],
     entry_points={
         "console_scripts": [
