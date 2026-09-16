@@ -96,6 +96,26 @@ OPENAI_MODELS = [
     "gpt-5.3-codex",
 ]
 
+GPT_IMAGE_MODELS = [
+    "dall-e-3",
+    "gpt-image-1",
+    "gpt-image-hd",
+    "gpt-image-standard",
+]
+
+NAI_IMAGE_MODELS = [
+    "nai-diffusion-3",
+    "nai-diffusion-furry-3",
+    "nai-diffusion",
+    "nai-diffusion-anime",
+]
+
+GROK_IMAGE_MODELS = [
+    "grok-2-image",
+    "grok-image-1",
+    "grok-image",
+]
+
 
 def default_profiles() -> list[dict[str, Any]]:
     return [
@@ -161,6 +181,33 @@ def default_profiles() -> list[dict[str, Any]]:
             "api_key": "",
             "models": list(GPT_PRO_SUPREME_MODELS),
             "model": GPT_PRO_SUPREME_MODELS[0],
+        },
+        {
+            "id": "maxplus-gpt-image",
+            "name": "GPT Image (สร้างภาพ)",
+            "base_url": "https://api.maxplus-ai.cc/gpt-image/v1",
+            "api_mode": "chat_completions",
+            "api_key": "",
+            "models": list(GPT_IMAGE_MODELS),
+            "model": GPT_IMAGE_MODELS[0],
+        },
+        {
+            "id": "maxplus-nai-image",
+            "name": "NAI Image (สร้างภาพ)",
+            "base_url": "https://api.maxplus-ai.cc/nai-image/v1",
+            "api_mode": "chat_completions",
+            "api_key": "",
+            "models": list(NAI_IMAGE_MODELS),
+            "model": NAI_IMAGE_MODELS[0],
+        },
+        {
+            "id": "maxplus-grok-image",
+            "name": "Grok Image (สร้างภาพ)",
+            "base_url": "https://api.maxplus-ai.cc/grok-image/v1",
+            "api_mode": "chat_completions",
+            "api_key": "",
+            "models": list(GROK_IMAGE_MODELS),
+            "model": GROK_IMAGE_MODELS[0],
         },
         {
             "id": "openai",
