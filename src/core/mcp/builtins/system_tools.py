@@ -35,6 +35,25 @@ except ImportError:
 _BACKGROUND_TASKS: dict[str, dict[str, Any]] = {}
 
 
+def _python_interpreter_command() -> Optional[list[str]]:
+    """Return a real Python interpreter command, never the frozen MAX executable."""
+    if not getattr(sys, "frozen", False):
+        return [sys.executable]
+
+    configured = os.environ.get("MAX_PYTHON_EXECUTABLE", "").strip()
+    if configured:
+        return [configured]
+
+    for name in ("python", "python3"):
+        executable = shutil.which(name)
+        if executable:
+            return [executable]
+    py_launcher = shutil.which("py")
+    if py_launcher:
+        return [py_launcher, "-3"]
+    return None
+
+
 def _builtin_calculate(expression: str) -> str:
     """Safe arithmetic calculation."""
     expr = expression.strip()
@@ -180,6 +199,13 @@ def _builtin_run_python_code(code: str, timeout_seconds: int = 30) -> str:
     if not code.strip():
         return "Error: Python code cannot be empty."
 
+    interpreter = _python_interpreter_command()
+    if interpreter is None:
+        return (
+            "Error: No Python interpreter was found. Install Python or set "
+            "MAX_PYTHON_EXECUTABLE; the packaged MAX executable cannot execute .py files itself."
+        )
+
     with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as f:
         f.write(code)
         temp_script = f.name
@@ -187,7 +213,7 @@ def _builtin_run_python_code(code: str, timeout_seconds: int = 30) -> str:
     proc: Optional[subprocess.Popen[str]] = None
     try:
         proc = subprocess.Popen(
-            [sys.executable, temp_script],
+            [*interpreter, temp_script],
             cwd=str(get_workspace_root()),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

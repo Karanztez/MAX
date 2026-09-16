@@ -3,6 +3,7 @@ tests/test_cli.py — Unit tests for Terminal & Mobile CLI features.
 """
 
 import os
+import json
 import sys
 import tempfile
 import unittest
@@ -26,6 +27,11 @@ class TestCli(unittest.TestCase):
         self.settings_path = Path(self.tmpdir.name) / "settings.json"
 
     def tearDown(self) -> None:
+        try:
+            from core.mcp.workspace_context import set_workspace_root
+        except ImportError:
+            from src.core.mcp.workspace_context import set_workspace_root  # type: ignore[no-redef]
+        set_workspace_root(Path.cwd())
         self.tmpdir.cleanup()
 
     def test_cli_initialization(self) -> None:
@@ -80,6 +86,108 @@ class TestCli(unittest.TestCase):
             with patch.object(MaxTerminalApp, "run_prompt_single") as mock_run:
                 run_cli(["-P", "china", "-m", "glm-5.3", "-p", "hello"])
                 mock_run.assert_called_once_with("hello")
+
+    def test_cli_workspace_routes_relative_tools_and_system_prompt(self) -> None:
+        with tempfile.TemporaryDirectory() as project_dir:
+            with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(project_dir) / "settings.json")):
+                app = MaxTerminalApp()
+                app.set_workspace(project_dir)
+
+                result = app.mcp_manager.execute_tool("write_file", {
+                    "path": "src/cli_created.py",
+                    "content": "CLI_OK = True\n",
+                })
+                target = Path(project_dir) / "src" / "cli_created.py"
+                self.assertTrue(target.exists())
+                self.assertEqual(target.read_text(encoding="utf-8"), "CLI_OK = True\n")
+                self.assertNotIn("Error", result)
+
+                client = app._create_client()
+                self.assertIn(str(Path(project_dir).resolve()), client.system_prompt)
+                self.assertIn("verify changes on disk", client.system_prompt)
+
+    def test_workspace_slash_command_supports_paths_with_spaces(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="max cli project ") as project_dir:
+            with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(project_dir) / "settings.json")):
+                app = MaxTerminalApp()
+                self.assertTrue(app.handle_command(f'/workspace "{project_dir}"'))
+                self.assertEqual(app.workspace_path, Path(project_dir).resolve())
+
+    def test_run_cli_workspace_argument_is_applied_before_prompt(self) -> None:
+        from cli import run_cli
+
+        with tempfile.TemporaryDirectory() as project_dir:
+            observed = {}
+
+            def fake_run_prompt(app, prompt):
+                observed["prompt"] = prompt
+                observed["workspace"] = app.workspace_path
+
+            with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(project_dir) / "settings.json")):
+                with patch.object(MaxTerminalApp, "run_prompt_single", fake_run_prompt):
+                    run_cli(["--workspace", project_dir, "--prompt", "fix it"])
+
+            self.assertEqual(observed["prompt"], "fix it")
+            self.assertEqual(observed["workspace"], Path(project_dir).resolve())
+
+    def test_team_pipeline_can_execute_project_tools(self) -> None:
+        with tempfile.TemporaryDirectory() as project_dir:
+            with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(project_dir) / "settings.json")):
+                app = MaxTerminalApp()
+                app.set_workspace(project_dir)
+
+                class FakeClient:
+                    def chat_with_tools(self, prompt, history, tools, tool_executor, on_status):
+                        tool_executor("write_file", {"path": "team_result.txt", "content": "done\n"})
+                        return history + [
+                            {"role": "user", "content": prompt},
+                            {"role": "assistant", "content": "Implemented and verified."},
+                        ], ["write_file"]
+
+                with patch.object(app, "_create_client", return_value=FakeClient()):
+                    app._run_team_pipeline("Create the requested file")
+
+                self.assertEqual(
+                    (Path(project_dir) / "team_result.txt").read_text(encoding="utf-8"),
+                    "done\n",
+                )
+
+    def test_single_prompt_tool_loop_edits_another_project_end_to_end(self) -> None:
+        try:
+            from core.ai_client import AIClient
+        except ImportError:
+            from src.core.ai_client import AIClient  # type: ignore[no-redef]
+
+        with tempfile.TemporaryDirectory() as project_dir:
+            with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(project_dir) / "settings.json")):
+                app = MaxTerminalApp()
+                app.set_workspace(project_dir)
+                client = AIClient(api_key="mock", api_mode="responses")
+                responses = iter([
+                    {
+                        "role": "assistant",
+                        "content": "",
+                        "tool_calls": [{
+                            "id": "call_write",
+                            "type": "function",
+                            "function": {
+                                "name": "write_file",
+                                "arguments": json.dumps({"path": "app.py", "content": "print('stable')\n"}),
+                            },
+                        }],
+                    },
+                    {"role": "assistant", "content": "Implemented and verified app.py."},
+                ])
+                client._call_response = lambda messages, **kwargs: next(responses)  # type: ignore[method-assign]
+
+                with patch.object(app, "_ensure_credentials", return_value=True):
+                    with patch.object(app, "_create_client", return_value=client):
+                        app.run_prompt_single("Create app.py")
+
+                self.assertEqual(
+                    (Path(project_dir) / "app.py").read_text(encoding="utf-8"),
+                    "print('stable')\n",
+                )
 
 
 if __name__ == "__main__":

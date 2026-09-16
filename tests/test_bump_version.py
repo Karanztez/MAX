@@ -50,16 +50,24 @@ class TestBumpVersion(unittest.TestCase):
         self.assertTrue(len(ver.split(".")) >= 2)
 
     def test_extract_release_notes_existing(self) -> None:
-        notes = extract_release_notes("v1.0.1")
-        self.assertIn("Cross-Platform Support", notes)
+        notes = extract_release_notes("v1.0.6")
+        self.assertIn("MAX for AI", notes)
 
     def test_extract_release_notes_fallback(self) -> None:
         notes = extract_release_notes("v99.99.99")
         self.assertTrue(len(notes) > 0)
 
     def test_update_changelog(self) -> None:
-        # Should not raise exception
-        update_changelog("1.0.1")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n- initial\n", encoding="utf-8")
+            original_root = getattr(_bump_mod, "ROOT_DIR")
+            try:
+                setattr(_bump_mod, "ROOT_DIR", root)
+                update_changelog("2.0.0")
+            finally:
+                setattr(_bump_mod, "ROOT_DIR", original_root)
+            self.assertIn("[v2.0.0]", (root / "CHANGELOG.md").read_text(encoding="utf-8"))
 
     def test_apply_version_updates_python_and_javascript_packages(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -84,12 +92,12 @@ class TestBumpVersion(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content, encoding="utf-8")
 
-            original_root = _bump_mod.ROOT_DIR
+            original_root = getattr(_bump_mod, "ROOT_DIR")
             try:
-                _bump_mod.ROOT_DIR = root
+                setattr(_bump_mod, "ROOT_DIR", root)
                 apply_version("v2.3.4")
             finally:
-                _bump_mod.ROOT_DIR = original_root
+                setattr(_bump_mod, "ROOT_DIR", original_root)
 
             self.assertIn('__version__ = "2.3.4"', (root / "src/max_ai/__init__.py").read_text())
             self.assertIn('VERSION = "2.3.4"', (root / "js/src/index.ts").read_text())

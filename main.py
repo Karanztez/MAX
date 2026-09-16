@@ -40,7 +40,7 @@ def _get_run_gui():
 
 
 if __name__ == "__main__":
-    cli_flags = {"--cli", "-c", "-p", "--prompt", "--help", "-h"}
+    cli_flags = {"--cli", "-c", "-p", "--prompt", "-w", "--workspace", "--help", "-h"}
     args = sys.argv[1:]
 
     # If CLI flags passed or running in headless environment (Termux, SSH, Docker, Server)
@@ -61,4 +61,3 @@ if __name__ == "__main__":
             else:
                 traceback.print_exc()
                 sys.exit(1)
-

@@ -7,6 +7,7 @@ import unittest
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -185,7 +186,24 @@ class TestSkillsAndMCP(unittest.TestCase):
                 })
                 self.assertIn(str(Path(tmpdir).resolve()), command)
             finally:
-                mgr.set_workspace_root(previous_root)
+                mgr.set_workspace_root(previous_root if previous_root.exists() else Path.cwd())
+
+    def test_frozen_app_never_uses_its_exe_as_python_interpreter(self):
+        try:
+            from core.mcp.builtins import system_tools
+            _python_interpreter_command = system_tools._python_interpreter_command
+            sys_tools_target = "core.mcp.builtins.system_tools"
+        except (ImportError, ModuleNotFoundError):
+            from src.core.mcp.builtins import system_tools  # type: ignore[no-redef]
+            _python_interpreter_command = system_tools._python_interpreter_command
+            sys_tools_target = "src.core.mcp.builtins.system_tools"
+
+        with patch.object(sys, "frozen", True, create=True):
+            with patch(f"{sys_tools_target}.shutil.which", return_value=None):
+                self.assertIsNone(_python_interpreter_command())
+
+            with patch(f"{sys_tools_target}.shutil.which", side_effect=lambda name: "C:/Python/python.exe" if name == "python" else None):
+                self.assertEqual(_python_interpreter_command(), ["C:/Python/python.exe"])
 
     def test_ai_client_chat_with_tools_mock(self):
         """Simulate autonomous tool loop in AIClient."""

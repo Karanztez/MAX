@@ -18,7 +18,10 @@ export class MaxAgent {
 
   constructor(options: AgentOptions = {}) {
     this.model = options.model || "gemini-2.5-flash";
-    this.apiKey = options.apiKey || (typeof process !== "undefined" && process.env ? process.env.MAXPLUS_API_KEY || "" : "");
+    this.apiKey =
+      options.apiKey ||
+      ((globalThis as any).process?.env?.MAXPLUS_API_KEY as string | undefined) ||
+      "";
     this.baseUrl = (options.baseUrl || "https://api.maxplus-ai.cc/gemini-full/v1").replace(/\/+$/, "");
     this.systemPrompt = options.systemPrompt || "";
     this.temperature = options.temperature ?? 0.7;

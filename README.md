@@ -1,6 +1,6 @@
-# MAX (MaxPlus AI)
+# 🪶 MAX for AI
 
-🪶 ผู้ช่วย AI อัจฉริยะแบบ Cross-Platform (Windows, Linux, macOS, Android Termux) พร้อมระบบ Terminal CLI, Built-in Agent Tools 23 ชนิด, Multi-Provider Profiles, Markdown Skills, และระบบจับภาพหน้าจอ
+🪶 ผู้ช่วย AI อัจฉริยะแบบ Cross-Platform (Windows, Linux, macOS, Android Termux) พร้อมระบบ Desktop GUI, Terminal CLI, Autonomous Tools 34+ ชนิด, Multi-Agent Team Pipeline, และ SDK รองรับทั้ง Python & JavaScript
 
 ---
 
@@ -38,7 +38,10 @@ max -p "ค้นหาข้อมูลเกี่ยวกับ Python 3.14
 # 3. กำหนดโมเดลเฉพาะเจาะจง
 max -m claude-sonnet-4-6 -p "ตรวจสอบไฟล์ในโฟลเดอร์นี้และสรุปโค้ด"
 
-# 4. เปิดหน้าต่าง GUI Desktop (สำหรับ Windows/Desktop ที่มีหน้าจอ)
+# 4. ให้ Agent แก้โปรเจกต์อื่นโดยระบุ workspace ชัดเจน
+max --workspace "C:\path\to\project" -p "ตรวจโค้ด แก้บั๊กจริง แล้วรัน tests ยืนยันผล"
+
+# 5. เปิดหน้าต่าง GUI Desktop (สำหรับ Windows/Desktop ที่มีหน้าจอ)
 max-gui
 ```
 
@@ -90,6 +93,7 @@ MAX บน Windows รองรับทั้งหน้าต่าง **Desk
 
 - **Terminal CLI (`max`):**
   - รันใน **Windows Terminal** หรือ **PowerShell**
+  - ระบุโปรเจกต์ด้วย `max --workspace "C:\path\to\project"` หรือเปลี่ยนระหว่างใช้งานด้วย `/workspace <path>`
   - รองรับ Colorized Diff Renderer แสดงโค้ดสีเขียว `+` และสีแดง `-` แบบ Antigravity / Gemini
   - มีระบบ Auto-updater สั่งอัปเดตเวอร์ชันใหม่ได้ในคำสั่งเดียวผ่าน `/update`
 
@@ -104,6 +108,7 @@ MAX บน Windows รองรับทั้งหน้าต่าง **Desk
 #### 4. คำสั่งลัดในแชท (Slash Commands บน Windows)
 
 - `/setup` — เปิดวิซาร์ดตั้งค่า AI Provider และ Model แบบเลือกหมายเลข [1..N]
+- `/workspace <path>` หรือ `/cd <path>` — ดูหรือเปลี่ยนโฟลเดอร์โปรเจกต์ที่ Agent ใช้อ่าน แก้ไฟล์ และรันคำสั่ง
 - `/models` หรือ `/model <name>` — ดูรายชื่อและสลับโมเดล AI
 - `/skills` หรือ `/skill install <repo>` — ติดตั้งสกิลอัตโนมัติจาก GitHub
 - `/security` หรือ `/domains` — ตั้งค่าความปลอดภัยการเข้าถึงเว็บไซต์ภายนอก
@@ -205,6 +210,7 @@ df -h | max -p "ตรวจสอบพื้นที่ดิสก์ หา
 คุณสามารถนำ MAX AI ไปติดตั้งและใช้งานเป็น **Python Package (`import max_ai`)** ในโปรเจกต์อื่นๆ เช่น **Discord Bot, Telegram Bot, FastAPI Server, หรือ Automation Scripts** ได้ทันที
 
 ### 📦 การติดตั้งในโปรเจกต์อื่น
+
 ```bash
 # ติดตั้งแบบมาตรฐาน
 pip install git+https://github.com/Karanztez/MAX.git
@@ -216,6 +222,7 @@ pip install "max-ai[discord] @ git+https://github.com/Karanztez/MAX.git"
 ---
 
 ### 🤖 1. ตัวอย่างสร้าง Discord AI Bot (ไม่ถึง 10 บรรทัด)
+
 ```python
 import os
 from max_ai.discord import create_max_bot
@@ -236,6 +243,7 @@ bot.run()
 ---
 
 ### ⚡ 2. ใช้งานแบบ Python SDK ทั่วไป (Sync & Async)
+
 ```python
 import max_ai
 
@@ -261,6 +269,7 @@ async def handle_request():
 ---
 
 ### 👥 3. Multi-Agent Team Pipeline ในโค้ด Python
+
 ```python
 import max_ai
 

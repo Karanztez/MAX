@@ -1,7 +1,7 @@
 {
   "name": "@karanztez/max-ai",
-  "version": "1.0.5",
-  "description": "MAX AI Agent JavaScript/TypeScript SDK & Discord Bot Kit",
+  "version": "1.0.6",
+  "description": "MAX for AI JavaScript/TypeScript SDK & Discord Bot Kit",
   "keywords": [
     "max-ai",
     "ai-agent",

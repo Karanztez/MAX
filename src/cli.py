@@ -97,6 +97,7 @@ class MaxTerminalApp:
         self.settings_store = SettingsStore()
         self.skill_manager = SkillManager()
         self.mcp_manager = MCPManager()
+        self.workspace_path = self.mcp_manager.set_workspace_root(Path.cwd())
         set_web_permission_handler(self._handle_web_permission)
         self.is_first_run = not self.settings_store.has_saved_key()
         self.profiles, self.selected_profile_id = self.settings_store.load_provider_settings(default_profiles())
@@ -182,7 +183,17 @@ class MaxTerminalApp:
 
         return True
 
-    def _create_client(self, model: str = "", profile_id: str = "") -> AIClient:
+    def set_workspace(self, path: str | Path) -> Path:
+        """Switch every relative code/tool operation to another project directory."""
+        self.workspace_path = self.mcp_manager.set_workspace_root(path)
+        return self.workspace_path
+
+    def _create_client(
+        self,
+        model: str = "",
+        profile_id: str = "",
+        system_prompt: str = "",
+    ) -> AIClient:
         p = self.active_profile
         if profile_id:
             for prof in self.profiles:
@@ -190,11 +201,19 @@ class MaxTerminalApp:
                     p = prof
                     break
         chosen_model = model or p.get("model", "")
+        workspace_prompt = (
+            f"You are working in project '{self.workspace_path.name}' at '{self.workspace_path}'. "
+            "Use the available file and command tools for requested code changes. Relative paths resolve from "
+            "this project. Inspect relevant files before editing, verify changes on disk, and run appropriate "
+            "checks. Only report completion after tool results confirm the requested changes succeeded."
+        )
+        effective_prompt = f"{workspace_prompt}\n{system_prompt}" if system_prompt else workspace_prompt
         return AIClient(
             api_key=p.get("api_key", ""),
             base_url=p.get("base_url", ""),
             model=chosen_model,
             api_mode=p.get("api_mode", "chat_completions"),
+            system_prompt=effective_prompt,
             timeout=60,
         )
 
@@ -296,10 +315,12 @@ class MaxTerminalApp:
 
             # Build temporary agent history with system prompt
             temp_history: list[dict[str, Any]] = []
-            if cur.system_prompt:
-                temp_history.append({"role": "system", "content": cur.system_prompt})
 
-            client = self._create_client(model=cur.model, profile_id=cur.profile_id)
+            client = self._create_client(
+                model=cur.model,
+                profile_id=cur.profile_id,
+                system_prompt=cur.system_prompt,
+            )
 
             safe_print(f"\n{color(cur.name, Colors.BOLD + Colors.GREEN)}: ", end="", flush=True)
             output_chunks: list[str] = []
@@ -316,10 +337,25 @@ class MaxTerminalApp:
 
             start_t = time.monotonic()
             try:
-                temp_history = client.stream_chat(prompt_for_agent, temp_history, on_chunk=on_chunk)
-                cur_output = "".join(output_chunks).strip()
-                if not cur_output and temp_history:
-                    cur_output = temp_history[-1].get("content", "")
+                tools = self.mcp_manager.get_openai_tools() if self.mcp_manager.enabled else None
+                if tools:
+                    def on_status(text: str) -> None:
+                        safe_print(f"\n{color('Tool: ' + text, Colors.DIM)}", flush=True)
+
+                    temp_history, _logs = client.chat_with_tools(
+                        prompt_for_agent,
+                        temp_history,
+                        tools=tools,
+                        tool_executor=self.mcp_manager.execute_tool,
+                        on_status=on_status,
+                    )
+                    cur_output = str(temp_history[-1].get("content", ""))
+                    safe_print(cur_output)
+                else:
+                    temp_history = client.stream_chat(prompt_for_agent, temp_history, on_chunk=on_chunk)
+                    cur_output = "".join(output_chunks).strip()
+                    if not cur_output and temp_history:
+                        cur_output = temp_history[-1].get("content", "")
             except Exception as ex:
                 safe_print(color(f"\n❌ เกิดข้อผิดพลาดในการรัน [{cur.name}]: {ex}", Colors.RED))
                 break
@@ -548,6 +584,7 @@ class MaxTerminalApp:
 พิมพ์ {color('/update', Colors.BOLD)} เพื่อตรวจหาอัปเดตเวอร์ชัน | {color('/exit', Colors.RED)} เพื่อออก
 """
         safe_print(banner)
+        safe_print(f"Workspace: {color(str(self.workspace_path), Colors.CYAN)}\n")
 
     def handle_command(self, cmd: str) -> bool:
         """Handle slash commands. Returns True if command was handled."""
@@ -563,6 +600,18 @@ class MaxTerminalApp:
         elif action in {"/clear", "/cls", "/reset"}:
             self.history.clear()
             safe_print(color("🧹 เคลียร์ประวัติการสนทนาเรียบร้อยแล้ว", Colors.GREEN))
+            return True
+
+        elif action in {"/workspace", "/project", "/cd", "/pwd"}:
+            raw_path = cmd.strip()[len(parts[0]):].strip()
+            if action == "/pwd" or not raw_path:
+                safe_print(f"Workspace: {self.workspace_path}")
+                return True
+            try:
+                selected = self.set_workspace(raw_path.strip('"'))
+                safe_print(color(f"Workspace changed to: {selected}", Colors.GREEN))
+            except (FileNotFoundError, NotADirectoryError) as ex:
+                safe_print(color(f"Workspace error: {ex}", Colors.RED))
             return True
 
         elif action in {"/update", "/upgrade"}:
@@ -839,6 +888,7 @@ class MaxTerminalApp:
             safe_print(f"""
 {color("คำสั่งที่ใช้งานได้ (Terminal Commands):", Colors.BOLD)}
   {color('/setup', Colors.CYAN)}                  - ตัวช่วยเลือกผู้ให้บริการ & โมเดล (โหมด 1-2-3-4)
+  {color('/workspace <path>', Colors.CYAN)}       - ดูหรือเปลี่ยนโฟลเดอร์โปรเจกต์ที่ AI สามารถแก้ไขได้
   {color('/screen [id|list|link]', Colors.CYAN)}   - ดูรายชื่อสกรีนและสลับสกรีน (เช่น /screen 1, /screen 2, /screen list)
   {color('/team [init|run|status]', Colors.CYAN)} - ระบบทีม Multi-Agent เชื่อมโยงท่อข้อมูลแบบอัตโนมัติ
   {color('/security', Colors.CYAN)}               - ตรวจสอบ/จัดการสิทธิ์การเข้าถึงเว็บไซต์ (Web Security)
@@ -1013,7 +1063,11 @@ class MaxTerminalApp:
                 self._ensure_credentials()
 
                 # Run conversation using active screen model/profile if defined
-                client = self._create_client(model=cur_screen.model, profile_id=cur_screen.profile_id)
+                client = self._create_client(
+                    model=cur_screen.model,
+                    profile_id=cur_screen.profile_id,
+                    system_prompt=cur_screen.system_prompt,
+                )
                 tools = self.mcp_manager.get_openai_tools() if self.mcp_manager.enabled else None
 
                 ai_name = cur_screen.name if cur_screen.role != "general" else "AI"
@@ -1057,16 +1111,23 @@ class MaxTerminalApp:
 
 
 def run_cli(args: Optional[list[str]] = None) -> None:
-    parser = argparse.ArgumentParser(description="MAX AI Agent — Terminal & Mobile CLI")
+    parser = argparse.ArgumentParser(description="MAX for AI — Terminal & Mobile CLI")
     parser.add_argument("-p", "--prompt", type=str, help="รันคำสั่งเดียวแบบ Single-shot แล้วแสดงผลลัพธ์")
     parser.add_argument("-P", "--provider", type=str, help="ระบุผู้ให้บริการ AI (เช่น 'China Town', 'Native', 'Claude', 'Grok')")
     parser.add_argument("-m", "--model", type=str, help="ระบุโมเดลที่ต้องการใช้งาน")
     parser.add_argument("-c", "--cli", action="store_true", help="เปิดโหมด Terminal Interactive CLI")
     parser.add_argument("-u", "--update", action="store_true", help="ตรวจหาและอัปเดตเวอร์ชันโปรแกรม")
     parser.add_argument("-s", "--setup", action="store_true", help="เปิดหน้าต่างตั้งค่า Provider และ Model")
+    parser.add_argument("-w", "--workspace", type=str, help="Project folder used by file, command, Git, and Python tools")
     parsed, remaining = parser.parse_known_args(args)
 
     app = MaxTerminalApp()
+
+    if parsed.workspace:
+        try:
+            app.set_workspace(parsed.workspace)
+        except (FileNotFoundError, NotADirectoryError) as ex:
+            parser.error(str(ex))
 
     if parsed.provider:
         target_p = parsed.provider.strip()

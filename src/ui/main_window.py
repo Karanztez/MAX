@@ -72,7 +72,7 @@ class MaxPlusGUI(tk.Tk):
         super().__init__()
         self.project_path = os.path.abspath(os.getcwd())
         self.project_name = os.path.basename(self.project_path)
-        self.title(f"MAX v{APP_VERSION}")
+        self.title(f"MAX for AI v{APP_VERSION}")
         self.geometry("1100x800")
         self.configure(bg=T["bg"])
         self.resizable(True, True)
@@ -177,7 +177,7 @@ class MaxPlusGUI(tk.Tk):
             self.project_path = os.path.abspath(chosen)
             self.project_name = os.path.basename(self.project_path)
             self.mcp_manager.set_workspace_root(self.project_path)
-            self.title(f"MAX v{APP_VERSION}")
+            self.title(f"MAX for AI v{APP_VERSION}")
             self._proj_btn.configure(text=f"📁 {self.project_name}")
             tab = self._current_tab()
             if tab is not None:

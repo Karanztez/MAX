@@ -434,7 +434,10 @@ class AIClient:
                 else:
                     tool_result = f"Tool executor not provided for {tool_name}"
 
-                logs.append(f"-> ผลลัพธ์ {tool_name}: {tool_result[:300]}")
+                result_status = f"-> ผลลัพธ์ {tool_name}: {tool_result[:300]}"
+                logs.append(result_status)
+                if on_status:
+                    on_status(result_status)
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc_id,
