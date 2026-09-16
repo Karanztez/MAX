@@ -46,7 +46,7 @@ export const Session = MaxSession;
 export const Team = MaxTeam;
 export const Converter = MaxConverter;
 
-export const VERSION = "1.0.2";
+export const VERSION = "1.0.3";
 
 /**
  * Convenience 1-liner to ask a single question.
