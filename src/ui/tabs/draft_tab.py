@@ -678,8 +678,12 @@ class DraftReviewTab(tk.Frame):
 
         issues_text: list[str] = []
         for item in children[:20]:  # limit to top 20 issues
-            vals = self.diag_tree.item(item, "values")
-            issues_text.append(f"- [{vals[0]}] {vals[2]} [{vals[3]}]: {vals[4]}")
+            item_data = self.diag_tree.item(item)
+            raw_vals = item_data.get("values") if isinstance(item_data, dict) else None
+            if isinstance(raw_vals, (list, tuple)) and len(raw_vals) >= 5:
+                issues_text.append(f"- [{raw_vals[0]}] {raw_vals[2]} [{raw_vals[3]}]: {raw_vals[4]}")
+            elif isinstance(raw_vals, (list, tuple)) and raw_vals:
+                issues_text.append(f"- {' '.join(str(v) for v in raw_vals)}")
 
         prompt = (
             "กรุณาช่วยตรวจสอบและแก้ไขบั๊กตามรายงาน IDE Diagnostics ต่อไปนี้:\n"
