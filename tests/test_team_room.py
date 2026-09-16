@@ -2,15 +2,33 @@
 tests/test_team_room.py — Unit tests for Multi-Agent Team Room and per-tab independent provider settings.
 """
 
+import sys
+from pathlib import Path
 import unittest
 from unittest.mock import MagicMock
 
-from src.ui.dialogs.team_config_dialog import (
-    TeamAgentConfig,
-    get_default_team_agents,
-)
-from src.ui.tabs.team_room_tab import AgentTeamTab
-from src.ui.chat_tab import ChatTab
+# Add src and project root to sys.path
+_root = str(Path(__file__).resolve().parent.parent)
+_src = str(Path(__file__).resolve().parent.parent / "src")
+if _src not in sys.path:
+    sys.path.insert(0, _src)
+if _root not in sys.path:
+    sys.path.insert(0, _root)
+
+try:
+    from ui.dialogs.team_config_dialog import (
+        TeamAgentConfig,
+        get_default_team_agents,
+    )
+    from ui.tabs.team_room_tab import AgentTeamTab
+    from ui.chat_tab import ChatTab
+except (ImportError, ModuleNotFoundError):
+    from src.ui.dialogs.team_config_dialog import (  # type: ignore[no-redef]
+        TeamAgentConfig,
+        get_default_team_agents,
+    )
+    from src.ui.tabs.team_room_tab import AgentTeamTab  # type: ignore[no-redef]
+    from src.ui.chat_tab import ChatTab  # type: ignore[no-redef]
 
 
 class TestTeamRoom(unittest.TestCase):

@@ -264,15 +264,15 @@ class AgentTeamTab(tk.Frame):
         is_thinking: bool = False,
     ) -> MessageBubble:
         bubble = MessageBubble(
-            self.scroll.interior,
+            self.scroll.inner,
             role=role,
-            text=text,
-            bg=bg,
+            content=text,
+            bg_card=bg,
             hdr_color=hdr_color,
             is_thinking=is_thinking,
         )
         self._bubbles.append(bubble)
-        self.scroll.scroll_to_bottom()
+        self.scroll.scroll_bottom()
         return bubble
 
     def _send_task(self) -> None:
@@ -437,4 +437,4 @@ class AgentTeamTab(tk.Frame):
         self._stop_requested = False
         self._run_btn.configure(state="normal")
         self._stop_btn.configure(state="disabled")
-        self.scroll.scroll_to_bottom()
+        self.scroll.scroll_bottom()
