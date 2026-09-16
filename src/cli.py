@@ -587,7 +587,14 @@ class MaxTerminalApp:
                     safe_print(color(f"❌ หมายเลขโปรไฟล์ต้องอยู่ระหว่าง 1 ถึง {len(self.profiles)}", Colors.RED))
                     return True
             else:
-                match = next((p for p in self.profiles if p["name"].casefold() == target.casefold() or p["id"].casefold() == target.casefold()), None)
+                match = next(
+                    (p for p in self.profiles
+                     if p["name"].casefold() == target.casefold()
+                     or p["id"].casefold() == target.casefold()
+                     or target.casefold() in p["name"].casefold()
+                     or target.casefold() in p["id"].casefold()),
+                    None
+                )
 
             if match:
                 self.selected_profile_id = match["id"]
@@ -748,6 +755,7 @@ class MaxTerminalApp:
 def run_cli(args: Optional[list[str]] = None) -> None:
     parser = argparse.ArgumentParser(description="MAX AI Agent — Terminal & Mobile CLI")
     parser.add_argument("-p", "--prompt", type=str, help="รันคำสั่งเดียวแบบ Single-shot แล้วแสดงผลลัพธ์")
+    parser.add_argument("-P", "--provider", type=str, help="ระบุผู้ให้บริการ AI (เช่น 'China Town', 'Native', 'Claude', 'Grok')")
     parser.add_argument("-m", "--model", type=str, help="ระบุโมเดลที่ต้องการใช้งาน")
     parser.add_argument("-c", "--cli", action="store_true", help="เปิดโหมด Terminal Interactive CLI")
     parser.add_argument("-u", "--update", action="store_true", help="ตรวจหาและอัปเดตเวอร์ชันโปรแกรม")
@@ -755,8 +763,27 @@ def run_cli(args: Optional[list[str]] = None) -> None:
     parsed, remaining = parser.parse_known_args(args)
 
     app = MaxTerminalApp()
+
+    if parsed.provider:
+        target_p = parsed.provider.strip()
+        match = next(
+            (p for p in app.profiles
+             if p["name"].casefold() == target_p.casefold()
+             or p["id"].casefold() == target_p.casefold()
+             or target_p.casefold() in p["name"].casefold()
+             or target_p.casefold() in p["id"].casefold()),
+            None,
+        )
+        if match:
+            app.selected_profile_id = match["id"]
+            app.active_profile = match
+        else:
+            safe_print(color(f"⚠️ ไม่พบ Provider '{target_p}', ใช้งาน: {app.active_profile['name']}", Colors.YELLOW))
+
     if parsed.model:
         app.active_profile["model"] = parsed.model
+        if parsed.model not in app.active_profile.get("models", []):
+            app.active_profile.setdefault("models", []).insert(0, parsed.model)
 
     if parsed.update:
         app.check_and_perform_update()

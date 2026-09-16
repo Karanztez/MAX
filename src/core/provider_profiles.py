@@ -75,6 +75,16 @@ CHINESE_SPECIALS_MODELS = [
     "hy3",
 ]
 
+CHINA_TOWN_MODELS = [
+    "deepseek-v4.1-flash",
+    "glm-5.3-flash",
+    "deepseek-v4-pro-0813",
+    "qwen-3.8-max",
+    "deepseek-v4-flash",
+    "glm-5.3",
+    "kimi-k3",
+]
+
 GROK_MODELS = [
     "grok-4.6",
     "grok-4.5",
@@ -153,6 +163,15 @@ def default_profiles() -> list[dict[str, Any]]:
             "api_key": "",
             "models": list(CHINESE_SPECIALS_MODELS),
             "model": CHINESE_SPECIALS_MODELS[0],
+        },
+        {
+            "id": "maxplus-china-town",
+            "name": "China Town (จีน)",
+            "base_url": "https://api.maxplus-ai.cc/china-town/v1",
+            "api_mode": "chat_completions",
+            "api_key": "",
+            "models": list(CHINA_TOWN_MODELS),
+            "model": CHINA_TOWN_MODELS[0],
         },
         {
             "id": "maxplus-grok-heavy",

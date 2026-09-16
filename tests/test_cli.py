@@ -61,9 +61,22 @@ class TestCli(unittest.TestCase):
     def test_handle_export_command(self) -> None:
         with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(tempfile.gettempdir()) / "test_s.json")):
             app = MaxTerminalApp()
-            # Test export
             res = app.handle_command("/export .")
             self.assertTrue(res)
+
+    def test_handle_profile_flexible_switch(self) -> None:
+        with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(tempfile.gettempdir()) / "test_s.json")):
+            app = MaxTerminalApp()
+            app.handle_command("/profile china")
+            self.assertIn("china", app.active_profile["id"].lower())
+            self.assertEqual(app.active_profile["base_url"], "https://api.maxplus-ai.cc/china-town/v1")
+
+    def test_run_cli_provider_and_model_args(self) -> None:
+        from cli import run_cli
+        with patch.object(SettingsStore, "__init__", lambda self, p=None: setattr(self, "path", Path(tempfile.gettempdir()) / "test_s.json")):
+            with patch.object(MaxTerminalApp, "run_prompt_single") as mock_run:
+                run_cli(["-P", "china", "-m", "glm-5.3", "-p", "hello"])
+                mock_run.assert_called_once_with("hello")
 
 
 if __name__ == "__main__":
