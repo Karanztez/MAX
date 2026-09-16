@@ -32,7 +32,9 @@ class UpdateDialog(tk.Toplevel):
         self.geometry("520x460")
         self.configure(bg=T["bg"])
         self.resizable(False, False)
-        self.transient(parent)
+        top = parent.winfo_toplevel()
+        if isinstance(top, tk.Wm):
+            self.transient(top)
         self.grab_set()
 
         # Center dialog relative to parent
@@ -276,6 +278,9 @@ class UpdateDialog(tk.Toplevel):
                     msg = f"ดาวน์โหลด: {mb_cur:.1f} MB..."
 
                 self.after(0, lambda: self._update_ui_progress(pct, msg))
+
+            if not self.info.download_url:
+                raise ValueError("ไม่พบ URL สำหรับดาวน์โหลดไฟล์อัปเดต")
 
             download_file(self.info.download_url, tmp_path, progress_callback=_on_progress)
 
