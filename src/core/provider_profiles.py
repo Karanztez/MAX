@@ -104,6 +104,7 @@ GPT_IMAGE_MODELS = [
 ]
 
 NAI_IMAGE_MODELS = [
+    "nai-diffusion-4-5-full",
     "nai-diffusion-3",
     "nai-diffusion-furry-3",
     "nai-diffusion",
@@ -111,14 +112,31 @@ NAI_IMAGE_MODELS = [
 ]
 
 GROK_IMAGE_MODELS = [
+    "grok-imagine-image-2.0",
     "grok-2-image",
     "grok-image-1",
     "grok-image",
 ]
 
+NATIVE_POOL_MODELS = [
+    "sonnet-4-5",
+    "haiku",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+]
+
 
 def default_profiles() -> list[dict[str, Any]]:
     return [
+        {
+            "id": "maxplus-native",
+            "name": "Native (Claude + GPT)",
+            "base_url": "https://api.maxplus-ai.cc/v1",
+            "api_mode": "chat_completions",
+            "api_key": "",
+            "models": list(NATIVE_POOL_MODELS),
+            "model": NATIVE_POOL_MODELS[0],
+        },
         {
             "id": "maxplus-claude-native",
             "name": "Claude Native",

@@ -136,6 +136,7 @@ def _generate_image_via_maxplus(
     negative_prompt: str = "",
     quality: str = "standard",
     style: str = "vivid",
+    reference_images: Optional[list[str]] = None,
 ) -> tuple[bool, str]:
     """Call MaxPlus AI image generation endpoint (/images/generations)."""
     base_url, api_key = _get_image_provider_credentials(provider)
@@ -157,6 +158,8 @@ def _generate_image_via_maxplus(
         payload["style"] = style
     if negative_prompt.strip():
         payload["negative_prompt"] = negative_prompt.strip()
+    if reference_images:
+        payload["reference_images"] = reference_images
 
     req_data = json.dumps(payload).encode("utf-8")
     headers = {
@@ -227,6 +230,7 @@ def _builtin_generate_image(
     negative_prompt: str = "",
     quality: str = "standard",
     style: str = "vivid",
+    reference_images: Optional[list[str]] = None,
 ) -> str:
     """Generate high-resolution AI image and save to disk."""
     p = prompt.strip()
@@ -249,14 +253,24 @@ def _builtin_generate_image(
     if chosen_provider == "auto":
         if "nai" in m_lower or "anime" in m_lower or "furry" in m_lower:
             chosen_provider = "nai-image"
+            if model in ("dall-e-3", "auto", ""):
+                model = "nai-diffusion-4-5-full"
         elif "grok" in m_lower:
             chosen_provider = "grok-image"
+            if model in ("dall-e-3", "auto", ""):
+                model = "grok-imagine-image-2.0"
         elif "dall-e" in m_lower or "gpt" in m_lower:
             chosen_provider = "gpt-image"
         elif "flux" in m_lower or "turbo" in m_lower:
             chosen_provider = "pollinations"
         else:
             chosen_provider = "gpt-image"
+    else:
+        # Align default model with chosen provider
+        if chosen_provider == "nai-image" and model in ("dall-e-3", "auto", ""):
+            model = "nai-diffusion-4-5-full"
+        elif chosen_provider == "grok-image" and model in ("dall-e-3", "auto", ""):
+            model = "grok-imagine-image-2.0"
 
     # If MaxPlus Image Provider requested
     if chosen_provider in ("gpt-image", "nai-image", "grok-image"):
@@ -270,6 +284,7 @@ def _builtin_generate_image(
             negative_prompt=negative_prompt,
             quality=quality,
             style=style,
+            reference_images=reference_images,
         )
         if ok:
             return res_or_err
@@ -410,7 +425,7 @@ def get_media_tools() -> dict[str, tuple[MCPTool, Any]]:
                         },
                         "model": {
                             "type": "string",
-                            "description": "โมเดลที่ต้องการสร้าง เช่น dall-e-3, gpt-image-1, nai-diffusion-3, grok-2-image, flux",
+                            "description": "โมเดลที่ต้องการสร้าง เช่น dall-e-3, nai-diffusion-4-5-full, grok-imagine-image-2.0, gpt-image-1, flux",
                             "default": "dall-e-3",
                         },
                         "output_path": {"type": "string", "description": "พาธไฟล์ภาพปลายทาง เช่น images/cat.png (หากไม่ระบุจะตั้งชื่ออัตโนมัติตามเวลา)", "default": ""},
@@ -419,6 +434,12 @@ def get_media_tools() -> dict[str, tuple[MCPTool, Any]]:
                         "negative_prompt": {"type": "string", "description": "สิ่งที่ไม่ต้องการให้ปรากฏในภาพ", "default": ""},
                         "quality": {"type": "string", "description": "คุณภาพภาพ: 'standard' หรือ 'hd'", "default": "standard"},
                         "style": {"type": "string", "description": "สไตล์ภาพ: 'vivid' หรือ 'natural'", "default": "vivid"},
+                        "reference_images": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "ภาพอ้างอิงสำหรับแก้ไขหรือแปลงภาพ (Image-to-Image / reference_images เช่น ใน Grok Imagine)",
+                            "default": [],
+                        },
                     },
                     "required": ["prompt"],
                 },
@@ -434,6 +455,7 @@ def get_media_tools() -> dict[str, tuple[MCPTool, Any]]:
                 negative_prompt=str(args.get("negative_prompt", "")),
                 quality=str(args.get("quality", "standard")),
                 style=str(args.get("style", "vivid")),
+                reference_images=args.get("reference_images") if isinstance(args.get("reference_images"), list) else None,
             ),
         ),
         "generate_video": (
