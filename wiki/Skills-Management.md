@@ -9,13 +9,17 @@
 คุณสามารถติดตั้งสกิลได้ 2 ช่องทาง:
 
 ### 1. ให้ AI ติดตั้งอัตโนมัติผ่านแชท
+
 บอก AI ตรงๆ ในช่องแชท:
+
 ```text
 "ช่วยติดตั้งสกิล blender จาก https://github.com/Karanztez/MAX/tree/main/skills/blender-3d ให้หน่อย"
 ```
+
 AI จะเรียกเครื่องมือ `install_skill` เพื่อดาวน์โหลดและติดตั้งให้ทันที
 
 ### 2. ใช้ Slash Command ใน CLI
+
 ```text
 /skill install owner/repo/path/to/skill
 /skill install https://raw.githubusercontent.com/.../SKILL.md
@@ -26,10 +30,13 @@ AI จะเรียกเครื่องมือ `install_skill` เพื
 ## 2. การดูรายชื่อและลบสกิล (Listing & Removing Skills)
 
 - **ดูรายชื่อสกิลที่ติดตั้งอยู่:**
+
   ```text
   /skills
   ```
+
 - **ลบสกิลที่ไม่ต้องการ:**
+
   ```text
   /skill remove blender-3d
   ```
@@ -56,5 +63,7 @@ author: Your Name
 ```
 
 ตำแหน่งโฟลเดอร์สกิล:
+
 - **Global Skills:** `%APPDATA%\max\skills\` (Windows) หรือ `~/.config/max/skills/` (Linux)
 - **Local Project Skills:** `./skills/` ภายในโปรเจกต์ปัจจุบัน
+

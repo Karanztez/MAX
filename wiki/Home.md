@@ -20,11 +20,13 @@
 ## ⚡ Quick Start (ติดตั้งใน 1 บรรทัด)
 
 ### 🐧 Linux / macOS / 📱 Android (Termux)
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/Karanztez/MAX/main/install.sh | bash
 ```
 
 ### 🪟 Windows (PowerShell)
+
 ```powershell
 irm https://raw.githubusercontent.com/Karanztez/MAX/main/install.ps1 | iex
 ```

@@ -64,10 +64,13 @@ MAX บน Windows รองรับทั้งหน้าต่าง **Desk
 #### 1. วิธีการติดตั้งบน Windows
 
 - **วิธีที่ 1 (อัตโนมัติผ่าน PowerShell):**
+
   ```powershell
   irm https://raw.githubusercontent.com/Karanztez/MAX/main/install.ps1 | iex
   ```
+
 - **วิธีที่ 2 (ติดตั้งแบบพัฒนาผ่าน Git & Python):**
+
   ```powershell
   git clone https://github.com/Karanztez/MAX.git
   cd MAX
@@ -116,10 +119,13 @@ MAX ถูกออกแบบให้ทำงานบน Linux (Ubuntu, Deb
 #### 1. วิธีการติดตั้งบน Linux
 
 - **วิธีที่ 1 (อัตโนมัติใน 1 บรรทัด):**
+
   ```bash
   curl -sSL https://raw.githubusercontent.com/Karanztez/MAX/main/install.sh | bash
   ```
+
 - **วิธีที่ 2 (ติดตั้งแบบ Manual ผ่าน Python venv):**
+
   ```bash
   # ติดตั้ง prerequisites (Ubuntu/Debian)
   sudo apt update && sudo apt install -y python3 python3-pip python3-venv git curl
@@ -138,12 +144,15 @@ MAX ถูกออกแบบให้ทำงานบน Linux (Ubuntu, Deb
 #### 2. การใช้งานบน Linux Server & VPS
 
 - **โหมด Interactive CLI:**
+
   ```bash
   max
   ```
+
   ใช้งานคุยโต้ตอบกับ AI พร้อมสั่งให้เขียนโค้ด, ตรวจสอบ log, ค้นหาไฟล์, รันคำสั่ง shell และแก้บัคโปรเจกต์ได้อัตโนมัติ
 
 - **โหมด Non-interactive / Scripting / CI-CD:**
+
   ```bash
   # ตรวจสอบโค้ดในโปรเจกต์แล้วส่งผลลัพธ์
   max -p "ช่วย review โค้ดในโฟลเดอร์ src/ และรายงานจุดที่ควรปรับปรุง"
@@ -153,6 +162,7 @@ MAX ถูกออกแบบให้ทำงานบน Linux (Ubuntu, Deb
   ```
 
 - **ใช้งาน Desktop GUI บน Linux (ถ้ามี Desktop Environment เช่น GNOME / KDE / XFCE):**
+
   ```bash
   sudo apt install -y python3-tk
   max-gui
@@ -181,9 +191,11 @@ df -h | max -p "ตรวจสอบพื้นที่ดิสก์ หา
 ### 📱 Android (Termux) Quick Guide
 
 - ติดตั้ง Termux และรันคำสั่ง One-liner:
+
   ```bash
   curl -sSL https://raw.githubusercontent.com/Karanztez/MAX/main/install.sh | bash
   ```
+
 - รองรับคำสั่ง `/export` บีบอัดโปรเจกต์ส่งเข้า `/sdcard/Download` ของมือถือได้ทันที
 
 ---

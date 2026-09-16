@@ -19,14 +19,17 @@
 ## 🚀 วิธีนำขึ้น GitHub Wiki
 
 เมื่อกด **"Create the first page"** บนหน้า [GitHub Wiki ของโปรเจกต์](https://github.com/Karanztez/MAX/wiki) คุณสามารถ:
+
 1. นำเนื้อหาจาก `Home.md` ไปวางแล้วกด **Save Page**
 2. กด **New Page** เพิ่มหน้าอื่นๆ ตามชื่อไฟล์ด้านบน
 3. หรือสามารถโคลน Git Wiki Repository ผ่าน:
-   ```bash
-   git clone https://github.com/Karanztez/MAX.wiki.git
-   cp wiki/*.md MAX.wiki/
-   cd MAX.wiki
-   git add .
-   git commit -m "docs(wiki): publish initial wiki documentation"
-   git push origin master
-   ```
+
+```bash
+git clone https://github.com/Karanztez/MAX.wiki.git
+cp wiki/*.md MAX.wiki/
+cd MAX.wiki
+git add .
+git commit -m "docs(wiki): publish initial wiki documentation"
+git push origin master
+```
+
