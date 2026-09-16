@@ -32,6 +32,7 @@ try:
     from ui.themes import T, DARK, LIGHT, FONT, FONT_TINY, FONT_TITLE, FONT_HDR
     from ui.chat_tab import ChatTab
     from ui.tabs.media_tab import MediaViewerTab
+    from ui.tabs.team_room_tab import AgentTeamTab
     from ui.capture.screen_crop import ScreenCropOverlay
     from ui.dialogs.settings_dialog import SettingsDialog
     from ui.dialogs.mcp_dialog import MCPManagerDialog
@@ -45,6 +46,7 @@ except (ImportError, ModuleNotFoundError):
     from src.ui.themes import T, DARK, LIGHT, FONT, FONT_TINY, FONT_TITLE, FONT_HDR  # type: ignore[no-redef]
     from src.ui.chat_tab import ChatTab  # type: ignore[no-redef]
     from src.ui.tabs.media_tab import MediaViewerTab  # type: ignore[no-redef]
+    from src.ui.tabs.team_room_tab import AgentTeamTab  # type: ignore[no-redef]
     from src.ui.capture.screen_crop import ScreenCropOverlay  # type: ignore[no-redef]
     from src.ui.dialogs.settings_dialog import SettingsDialog  # type: ignore[no-redef]
     from src.ui.dialogs.mcp_dialog import MCPManagerDialog  # type: ignore[no-redef]
@@ -216,7 +218,15 @@ class MaxPlusGUI(tk.Tk):
             font=FONT_TINY, relief="flat", padx=7, pady=2,
             command=self._close_tab, cursor="hand2"
         )
-        self._close_tab_btn.pack(side="left")
+        self._close_tab_btn.pack(side="left", padx=(0, 6))
+
+        self._team_btn = tk.Button(
+            self._toolbar_left, text="👥 Team Room",
+            bg=T["bg2"], fg=T["accent"], activebackground=T["bg3"], activeforeground=T["accent_hover"],
+            font=FONT_TINY, relief="flat", padx=8, pady=2,
+            command=self._new_team_room_tab, cursor="hand2"
+        )
+        self._team_btn.pack(side="left")
 
         # Right: Provider & Model Comboboxes + Action buttons
         self._toolbar_right = tk.Frame(self._toolbar, bg=T["bg"])
@@ -275,6 +285,7 @@ class MaxPlusGUI(tk.Tk):
 
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill="both", expand=True, padx=10, pady=(0, 4))
+        self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_switched)
 
     # ── tabs ───────────────────────────────────────────────────────────────
     def _new_tab(self) -> None:
@@ -282,10 +293,39 @@ class MaxPlusGUI(tk.Tk):
         profile = self._active_profile()
         tab = ChatTab(self.notebook, tab_name=f"Chat {chat_count}", api_key=profile["api_key"],
                       base_url=profile["base_url"], model=profile["model"],
-                      api_mode=profile["api_mode"])
+                      api_mode=profile["api_mode"],
+                      profile_id=profile["id"], profile_name=profile["name"])
         self._tabs.append(tab)
         self.notebook.add(tab, text=f"  Chat {chat_count}  ")
         self.notebook.select(tab)
+
+    def _new_team_room_tab(self) -> None:
+        team_count = sum(1 for t in self._tabs if isinstance(t, AgentTeamTab)) + 1
+        tab_title = f"👥 Team {team_count}" if team_count > 1 else "👥 Team Room"
+        tab = AgentTeamTab(
+            self.notebook,
+            tab_name=tab_title,
+            profiles=self.profiles,
+            default_profile_id=self.selected_profile_id,
+        )
+        self._tabs.append(tab)
+        self.notebook.add(tab, text=f" {tab_title} ")
+        self.notebook.select(tab)
+
+    def _on_tab_switched(self, _event: object = None) -> None:
+        tab = self._current_tab()
+        if tab is None:
+            return
+        # Sync top-bar provider & model comboboxes to reflect this tab's independent settings
+        profile = next((p for p in self.profiles if p["id"] == getattr(tab, "profile_id", "")), None)
+        if not profile:
+            profile = self._active_profile()
+        self._changing_provider = True
+        self.selected_profile_id = profile["id"]
+        self.provider_var.set(profile["name"])
+        self._model_box.configure(values=profile["models"])
+        self.model_var.set(tab.ai.model)
+        self._changing_provider = False
 
     def open_media_tab(
         self,
@@ -600,10 +640,13 @@ class MaxPlusGUI(tk.Tk):
         if self._changing_provider:
             return
         model = self.model_var.get()
+        if not model:
+            return
         self._active_profile()["model"] = model
-        for t in self._tabs:
-            if isinstance(t, ChatTab):
-                t.ai.model = model
+        tab = self._current_tab()
+        if tab is not None:
+            tab.ai.model = model
+            tab.status_var.set(f"สลับ Model: {model}")
 
     def _on_provider_change(self, *_: object) -> None:
         if self._changing_provider:
@@ -617,10 +660,16 @@ class MaxPlusGUI(tk.Tk):
         self._model_box.configure(values=profile["models"])
         self.model_var.set(profile["model"])
         self._changing_provider = False
-        self._apply_active_profile()
-        for tab in self._tabs:
-            if isinstance(tab, ChatTab):
-                tab.status_var.set(f"ใช้ {profile['name']} · {profile['model']}")
+
+        tab = self._current_tab()
+        if tab is not None:
+            tab.profile_id = profile["id"]
+            tab.profile_name = profile["name"]
+            tab.ai.api_key = profile["api_key"]
+            tab.ai.base_url = profile["base_url"].rstrip("/")
+            tab.ai.api_mode = profile["api_mode"]
+            tab.ai.model = profile["model"]
+            tab.status_var.set(f"ใช้ {profile['name']} · {profile['model']}")
 
     # ── theme ──────────────────────────────────────────────────────────────
     def _toggle_theme(self) -> None:
@@ -641,6 +690,8 @@ class MaxPlusGUI(tk.Tk):
         self._proj_btn.configure(bg=T["bg2"], fg=T["accent"], activebackground=T["bg3"])
         self._add_tab_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
         self._close_tab_btn.configure(bg=T["bg2"], fg=T["err_hdr"], activebackground=T["bg3"])
+        if hasattr(self, "_team_btn") and isinstance(self._team_btn, tk.Button):
+            self._team_btn.configure(bg=T["bg2"], fg=T["accent"], activebackground=T["bg3"], activeforeground=T["accent_hover"])
         self._theme_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
         self._settings_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])
         self._mcp_btn.configure(bg=T["bg2"], fg=T["fg"], activebackground=T["bg3"])

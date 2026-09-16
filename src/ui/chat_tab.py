@@ -52,9 +52,12 @@ class ChatTab(tk.Frame):
 
     def __init__(self, parent: tk.Misc, tab_name: str = "Chat", api_key: str = "",
                  base_url: str = "https://api.maxplus-ai.cc/gemini-full/v1",
-                 model: str = "gemini-3.8-flash", api_mode: str = "chat_completions") -> None:
+                 model: str = "gemini-3.8-flash", api_mode: str = "chat_completions",
+                 profile_id: str = "", profile_name: str = "") -> None:
         super().__init__(parent, bg=T["bg"])
         self.tab_name = tab_name
+        self.profile_id = profile_id
+        self.profile_name = profile_name
         self.history: list = []
         self.ai = AIClient(api_key=api_key, base_url=base_url, model=model, api_mode=api_mode)
         self._pending_img: Optional["Image.Image"] = None
