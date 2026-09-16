@@ -12,8 +12,9 @@ default: false
 
 ## 1. โครงสร้างโปรเจกต์ Kotlin มาตรฐาน (Gradle Kotlin DSL)
 
-### Standard Layout:
-```
+### Standard Layout
+
+```text
 my-kotlin-app/
 ├── build.gradle.kts
 ├── settings.gradle.kts
@@ -32,7 +33,8 @@ my-kotlin-app/
                 └── AppTest.kt
 ```
 
-### ตัวอย่าง `build.gradle.kts` ขั้นพื้นฐาน:
+### ตัวอย่าง `build.gradle.kts` ขั้นพื้นฐาน
+
 ```kotlin
 plugins {
     kotlin("jvm") version "2.0.0"
@@ -57,7 +59,8 @@ application {
 
 ## 2. การคอมไพล์และรันโค้ด Kotlin ผ่าน Terminal / Shell
 
-### 🚀 Standalone Script หรือ Single File:
+### 🚀 Standalone Script หรือ Single File
+
 ```bash
 # คอมไพล์ไฟล์ .kt เป็น JAR
 kotlinc src/com/example/app/Main.kt -include-runtime -d app.jar
@@ -69,7 +72,8 @@ java -jar app.jar
 kotlinc -script script.main.kts
 ```
 
-### 🐘 Gradle Kotlin Projects:
+### 🐘 Gradle Kotlin Projects
+
 ```bash
 # รันโปรเจกต์
 ./gradlew run
@@ -86,6 +90,7 @@ kotlinc -script script.main.kts
 ## 3. การใช้งาน Kotlin บน Android (Termux)
 
 บน Termux สามารถติดตั้งคอมไพเลอร์ Kotlin และ OpenJDK เพื่อเขียนและรันได้ทันที:
+
 ```bash
 # 1. ติดตั้ง openjdk และ kotlin บน Termux
 pkg update && pkg install -y openjdk-17 kotlin
@@ -107,6 +112,7 @@ java -jar Hello.jar
 ---
 
 ## 4. แนวปฏิบัติและรูปแบบที่แนะนำ (Kotlin Idioms)
+
 1. **Null Safety:** ใช้ Safe Calls (`?.`), Elvis Operator (`?:`), และหลีกเลี่ยง Non-null Assertion (`!!`)
 2. **Data & Sealed Classes:** ใช้ `data class` สำหรับ DTOs/Value Objects และ `sealed interface` / `sealed class` สำหรับ State Management และ Result types
 3. **Coroutines & Flow:** ใช้ `suspend functions` และ `CoroutineScope` ที่มี Structured Concurrency สำหรับงาน Asynchronous / I/O

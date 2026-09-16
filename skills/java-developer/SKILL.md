@@ -12,8 +12,9 @@ default: false
 
 ## 1. การสร้างและจัดการโครงสร้างโปรเจกต์ (Standard Project Layout)
 
-### Standard Maven / Gradle Structure:
-```
+### Standard Maven / Gradle Structure
+
+```text
 my-java-app/
 ├── pom.xml (หรือ build.gradle / build.gradle.kts)
 ├── src/
@@ -34,7 +35,8 @@ my-java-app/
 
 ## 2. การคอมไพล์และรันโค้ด Java ผ่าน Terminal / Shell
 
-### ☕ Single File หรือ Standalone Java (Java 11+ / 17 / 21):
+### ☕ Single File หรือ Standalone Java (Java 11+ / 17 / 21)
+
 ```bash
 # รันไฟล์ .java ได้ทันทีโดยไม่ต้องคอมไพล์ล่วงหน้า (Java 11+)
 java src/com/example/app/Main.java
@@ -44,7 +46,8 @@ javac -d bin src/com/example/app/Main.java
 java -cp bin com.example.app.Main
 ```
 
-### 🐘 Gradle Projects:
+### 🐘 Gradle Projects
+
 ```bash
 # คอมไพล์และรันโปรเจกต์
 ./gradlew run
@@ -58,7 +61,8 @@ java -cp bin com.example.app.Main
 java -jar build/libs/my-app-1.0.0.jar
 ```
 
-### 📦 Maven Projects:
+### 📦 Maven Projects
+
 ```bash
 # คอมไพล์และรัน
 mvn clean compile
@@ -74,6 +78,7 @@ java -jar target/my-app-1.0.0.jar
 ## 3. การใช้งาน Java บน Android (Termux)
 
 บน Termux สามารถติดตั้งและใช้งาน OpenJDK ได้เต็มรูปแบบ:
+
 ```bash
 # 1. ติดตั้ง OpenJDK (Java 17 / 21)
 pkg update && pkg install -y openjdk-17
@@ -98,6 +103,7 @@ java -cp src Hello
 ---
 
 ## 4. แนวปฏิบัติที่ดีในการเขียนโค้ด Java (Best Practices)
+
 1. **Modern Java Features:** ใช้ `record`, `sealed class`, `pattern matching`, `var`, `Stream API`, และ `Optional` อย่างเหมาะสม
 2. **Robust Error Handling:** จัดการ Exception อย่างชัดเจน ไม่ swallow exception ด้วย empty catch block
 3. **Threading & Concurrency:** ใช้ `Virtual Threads` (Java 21+) หรือ `ExecutorService` หลีกเลี่ยงการสร้าง raw `Thread` แบบไม่ควบคุม

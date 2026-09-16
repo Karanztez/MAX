@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD024 -->
 # Changelog
 
 All notable changes to **MAX (MaxPlus AI)** will be documented in this file.
@@ -9,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+- **Project Export & Download Tool (`/export`, `/download`)**: Added tool #24 and slash commands to easily export project files as ZIP to Android Termux Download storage (`/sdcard/Download`) and desktop download directories.
 - **Java & Kotlin Project Support**: Added specialized [`skills/java-developer`](file:///skills/java-developer/SKILL.md) and [`skills/kotlin-developer`](file:///skills/kotlin-developer/SKILL.md) skills covering Gradle, Maven, Spring Boot, Android, Coroutines, Compose, and Termux OpenJDK execution.
 - **CLI Self-Updater (`/update`)**: Added command in Terminal/Mobile CLI to check GitHub releases, preview Changelogs, and auto-download/update both frozen EXE and source/git environments.
 - **Interactive Numbered Setup (1-2-3-4)**: First-run setup and `/setup` wizard in CLI allowing users to choose AI Provider by number [1..N], select model by number [1..N], and configure custom endpoints.
@@ -21,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.1] - 2026-09-16
 
 ### Added
+
 - **Cross-Platform Support**: Added automated 1-line installation scripts (`install.sh` and `install.ps1`) for Linux, macOS, Windows Terminal, and Android (Termux).
 - **Package Management**: Added standard `setup.py` and `pyproject.toml` with `max` and `max-gui` CLI entry points.
 - **Built-in Agent Toolset**: Expanded built-in MCP agent tools (23 tools) with background execution, file ops, search, and system monitoring.
@@ -31,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.0] - 2026-09-15
 
 ### Added
+
 - **Modular Architecture**: Restructured codebase into `src/core` and `src/ui`.
 - **In-Place GitHub Auto-Updater**: Background update check and self-replacing Windows EXE updater with download progress dialog.
 - **Multi-Tab GUI & Screen Snipping**: Full Windows screen capture tool, clipboard image paste, global hotkeys, and system tray integration.
