@@ -357,7 +357,7 @@ class MessageBubble(tk.Frame):
         self.body.update_idletasks()
         try:
             count = self.body.count("1.0", "end", "displaylines")
-            lines = int(count[0]) if count else 1
+            lines = count[0] if count else 1
         except Exception:
             lines = 2
         self.body.configure(height=max(1, lines), state="disabled")
