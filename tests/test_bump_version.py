@@ -3,7 +3,9 @@ tests/test_bump_version.py — Unit tests for bump_version script logic.
 """
 
 import importlib.util
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -26,6 +28,7 @@ bump_semver = _bump_mod.bump_semver
 get_current_version = _bump_mod.get_current_version
 extract_release_notes = _bump_mod.extract_release_notes
 update_changelog = _bump_mod.update_changelog
+apply_version = _bump_mod.apply_version
 
 
 class TestBumpVersion(unittest.TestCase):
@@ -57,6 +60,43 @@ class TestBumpVersion(unittest.TestCase):
     def test_update_changelog(self) -> None:
         # Should not raise exception
         update_changelog("1.0.1")
+
+    def test_apply_version_updates_python_and_javascript_packages(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            files = {
+                "src/__init__.py": '__version__ = "1.0.2"\n',
+                "src/max_ai/__init__.py": '__version__ = "1.0.2"\n',
+                "src/core/updater.py": 'APP_VERSION = "1.0.2"\n',
+                "src/core/mcp_manager.py": '"clientInfo": {"name": "MaxPlusAI", "version": "1.0.2"}\n',
+                "setup.py": 'version="1.0.2"\n',
+                "pyproject.toml": 'version = "1.0.2"\n',
+                "js/src/index.ts": 'export const VERSION = "1.0.2";\n',
+                "package.json": json.dumps({"name": "@karanztez/max-ai", "version": "1.0.2"}),
+                "package-lock.json": json.dumps({
+                    "name": "@karanztez/max-ai",
+                    "version": "1.0.2",
+                    "packages": {"": {"version": "1.0.2"}},
+                }),
+            }
+            for relative_path, content in files.items():
+                path = root / relative_path
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+
+            original_root = _bump_mod.ROOT_DIR
+            try:
+                _bump_mod.ROOT_DIR = root
+                apply_version("v2.3.4")
+            finally:
+                _bump_mod.ROOT_DIR = original_root
+
+            self.assertIn('__version__ = "2.3.4"', (root / "src/max_ai/__init__.py").read_text())
+            self.assertIn('VERSION = "2.3.4"', (root / "js/src/index.ts").read_text())
+            self.assertEqual(json.loads((root / "package.json").read_text())["version"], "2.3.4")
+            lock = json.loads((root / "package-lock.json").read_text())
+            self.assertEqual(lock["version"], "2.3.4")
+            self.assertEqual(lock["packages"][""]["version"], "2.3.4")
 
 
 if __name__ == "__main__":

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- JavaScript/TypeScript SDK with agents, stateful sessions, streaming, multi-agent teams, Discord bot helpers, and provider-format converters.
+- Automated publication of `@karanztez/max-ai` to GitHub npm Packages during releases.
+
+### Fixed
+
+- Release version synchronization now updates both Python SDK packages, JavaScript runtime metadata, and npm lockfiles.
+
 ---
 
 ## [v1.0.2] - 2026-09-16

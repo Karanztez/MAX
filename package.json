@@ -1,0 +1,55 @@
+{
+  "name": "@karanztez/max-ai",
+  "version": "1.0.2",
+  "description": "MAX AI Agent JavaScript/TypeScript SDK & Discord Bot Kit",
+  "keywords": [
+    "max-ai",
+    "ai-agent",
+    "gemini",
+    "claude",
+    "openai",
+    "discord-bot",
+    "multi-agent",
+    "llm"
+  ],
+  "author": "Karanztez",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Karanztez/MAX.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Karanztez/MAX/issues"
+  },
+  "homepage": "https://github.com/Karanztez/MAX#readme",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./js/dist/index.js",
+  "types": "./js/dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./js/dist/index.js",
+      "types": "./js/dist/index.d.ts"
+    }
+  },
+  "files": [
+    "js/dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p js/tsconfig.json",
+    "pretest": "npm run build",
+    "test": "node js/test/test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -70,7 +70,7 @@ jobs:
             python scripts/bump_version.py --update-changelog $newTag
 
             # Commit and push version updates back to main
-            git add CHANGELOG.md src/__init__.py src/core/updater.py src/core/mcp_manager.py setup.py pyproject.toml
+            git add CHANGELOG.md src/__init__.py src/max_ai/__init__.py src/core/updater.py src/core/mcp_manager.py setup.py pyproject.toml package.json package-lock.json js/src/index.ts
             $hasDiff = git diff --staged --name-only
             if ($hasDiff) {
               git commit -m "chore(release): bump version to $newTag [skip ci]"
@@ -86,7 +86,7 @@ jobs:
             python scripts/bump_version.py --update-changelog $tag
 
             # Ensure main branch receives the version update
-            git add CHANGELOG.md src/__init__.py src/core/updater.py src/core/mcp_manager.py setup.py pyproject.toml
+            git add CHANGELOG.md src/__init__.py src/max_ai/__init__.py src/core/updater.py src/core/mcp_manager.py setup.py pyproject.toml package.json package-lock.json js/src/index.ts
             $hasDiff = git diff --staged --name-only
             if ($hasDiff) {
               git commit -m "chore(release): sync version to $tag [skip ci]"
@@ -189,6 +189,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -216,3 +218,33 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  publish_npm_package:
+    name: Publish to GitHub npm Packages (@karanztez/max-ai)
+    needs: bump_and_release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@karanztez'
+
+      - name: Install dependencies and compile TypeScript
+        run: |
+          npm ci
+          npm test
+
+      - name: Publish to GitHub Packages
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

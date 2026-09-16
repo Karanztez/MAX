@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import json
 import os
 import re
 import subprocess
@@ -101,6 +102,42 @@ def apply_version(new_version: str) -> None:
             pyproject_path.read_text(encoding="utf-8"),
         )
         pyproject_path.write_text(content, encoding="utf-8")
+
+    # 6. Public Python SDK package
+    sdk_init_path = ROOT_DIR / "src" / "max_ai" / "__init__.py"
+    if sdk_init_path.exists():
+        content = re.sub(
+            r'__version__\s*=\s*["\'][^"\']+["\']',
+            f'__version__ = "{ver}"',
+            sdk_init_path.read_text(encoding="utf-8"),
+        )
+        sdk_init_path.write_text(content, encoding="utf-8")
+
+    # 7. JavaScript SDK runtime version
+    js_index_path = ROOT_DIR / "js" / "src" / "index.ts"
+    if js_index_path.exists():
+        content = re.sub(
+            r'export const VERSION\s*=\s*["\'][^"\']+["\']',
+            f'export const VERSION = "{ver}"',
+            js_index_path.read_text(encoding="utf-8"),
+        )
+        js_index_path.write_text(content, encoding="utf-8")
+
+    # 8. npm manifests (the lockfile stores the root package version twice)
+    for manifest_name in ("package.json", "package-lock.json"):
+        manifest_path = ROOT_DIR / manifest_name
+        if not manifest_path.exists():
+            continue
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["version"] = ver
+        if manifest_name == "package-lock.json":
+            root_package = manifest.get("packages", {}).get("")
+            if isinstance(root_package, dict):
+                root_package["version"] = ver
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
 
 
 def update_changelog(new_version: str) -> None:

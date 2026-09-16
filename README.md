@@ -279,6 +279,50 @@ print(results["final_output"])
 
 ---
 
+## JavaScript / TypeScript SDK
+
+The Node.js SDK is published to GitHub Packages as `@karanztez/max-ai` and requires Node.js 18 or newer.
+
+```bash
+npm config set @karanztez:registry https://npm.pkg.github.com
+npm install @karanztez/max-ai
+```
+
+Set `MAXPLUS_API_KEY`, then use the one-shot API or a stateful session:
+
+```ts
+import { MaxAgent, ask } from "@karanztez/max-ai";
+
+const answer = await ask("Explain quantum computing simply");
+
+const agent = new MaxAgent({ model: "gemini-2.5-flash" });
+const session = agent.createSession("channel-101");
+console.log((await session.send("My name is Alex")).text);
+console.log((await session.send("What is my name?")).text);
+```
+
+For an existing `discord.js` client, attach the included message handler:
+
+```ts
+import { Client, GatewayIntentBits } from "discord.js";
+import { createDiscordBot } from "@karanztez/max-ai";
+
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+});
+
+createDiscordBot({
+  discordToken: process.env.DISCORD_BOT_TOKEN!,
+  commandPrefix: "!max ",
+}).attachToClient(client);
+
+await client.login(process.env.DISCORD_BOT_TOKEN);
+```
+
+The package also exports `MaxTeam` for linked agent pipelines and `MaxConverter` helpers for OpenAI, Gemini, Anthropic, Discord, Markdown, and plain-text formats.
+
+---
+
 ## 🛠 ฟีเจอร์หลัก (Key Features)
 
 - **🌐 Cross-Platform & Mobile Support:** รองรับเต็มรูปแบบทั้ง Windows GUI, Linux Server, VPS, Docker, macOS และมือถือ Android (Termux)
