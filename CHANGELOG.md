@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.0.8] - 2026-09-16
+
+### 🔄 In-Place Force Reinstall, Transient 503 Retries & CI Idempotency
+
+#### 🛡️ Resilient AI Client & Transient Error Retries
+- **HTTP 500/502/503/504 Backoff Retries:** Added exponential backoff retries with jitter in `AIClient._call_response` for transient provider errors.
+- **Graceful Tool Execution Fallback:** Ensures tool execution results are synthesized into a structured Thai report even if the subsequent model call experiences server issues.
+
+#### 🔄 Self-Update & Force Reinstall (`updater.py`)
+- **Force Re-download / Reinstall Latest Build:** Added prompt in GUI (Settings and Help update checks) and CLI (`max --update` / `/update`) allowing users to re-download and reinstall the latest build from GitHub Releases even if already running the latest version number.
+- **Improved Dialog Messaging:** Update dialog clearly distinguishes between new version upgrades and reinstalling the current build.
+
+#### 📁 Non-Git Repository Safety
+- **Workspace Git Detection:** Added `_is_git_repo` helper in `system_tools.py` ensuring git commands fail gracefully with helpful guidance when executed in non-git directories.
+
+#### 🚀 CI/CD Pipeline Hardening
+- **Idempotent npm Package Publishing:** Updated `.github/workflows/release.yml` with pre-publish registry checks so re-running actions or updating tags does not fail on already-published versions.
+
+---
+
 ## [v1.0.7] - 2026-09-16
 
 ### 🚀 IDE Debug Inspector, Background Test Runner & Staged Drafts Tab
