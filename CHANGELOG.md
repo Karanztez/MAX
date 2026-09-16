@@ -9,8 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
+- **AI Image Generation Tool (`generate_image`, `/image`, `/img`)**: Tool #25 enabling high-resolution image creation (Flux, Turbo, DALL-E) directly saved to disk with zero-config fallback.
+- **AI Video Generation Tool (`generate_video`, `/video`, `/vid`)**: Tool #26 enabling AI-driven short video and animation synthesis (Wan2.1 / MP4) with instant preview.
+- **Multimedia Generator Skill**: Added [`skills/multimedia-generator`](file:///skills/multimedia-generator/SKILL.md) for automated graphic assets, concept art, UI mockups, and video creation.
 - **Project Export & Download Tool (`/export`, `/download`)**: Added tool #24 and slash commands to easily export project files as ZIP to Android Termux Download storage (`/sdcard/Download`) and desktop download directories.
 - **Java & Kotlin Project Support**: Added specialized [`skills/java-developer`](file:///skills/java-developer/SKILL.md) and [`skills/kotlin-developer`](file:///skills/kotlin-developer/SKILL.md) skills covering Gradle, Maven, Spring Boot, Android, Coroutines, Compose, and Termux OpenJDK execution.
 - **CLI Self-Updater (`/update`)**: Added command in Terminal/Mobile CLI to check GitHub releases, preview Changelogs, and auto-download/update both frozen EXE and source/git environments.

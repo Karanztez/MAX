@@ -853,6 +853,151 @@ def _builtin_export_to_download(source_path: str = ".", output_name: str = "") -
         return f"Error exporting project: {ex}"
 
 
+def _builtin_generate_image(
+    prompt: str,
+    output_path: str = "",
+    width: int = 1024,
+    height: int = 1024,
+    model: str = "flux",
+    seed: Optional[int] = None,
+    negative_prompt: str = "",
+) -> str:
+    """Generate high-quality AI images using Pollinations / Flux / AI Engine and save to disk."""
+    import urllib.request
+    import urllib.parse
+    import time
+    import random
+    import shutil
+
+    prompt = prompt.strip()
+    if not prompt:
+        return "Error: Prompt cannot be empty"
+
+    width = max(256, min(width, 2048))
+    height = max(256, min(height, 2048))
+    seed_val = seed if seed is not None else random.randint(1, 99999999)
+
+    # Determine destination file path
+    if output_path.strip():
+        dest = Path(output_path.strip()).resolve()
+    else:
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        dest = (Path.cwd() / f"image_{timestamp}.png").resolve()
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    # Build image generation URL
+    encoded_prompt = urllib.parse.quote(prompt)
+    params = {
+        "width": str(width),
+        "height": str(height),
+        "seed": str(seed_val),
+        "model": model.strip().lower() if model else "flux",
+        "nologo": "true",
+        "enhance": "true",
+    }
+    if negative_prompt.strip():
+        params["negative"] = negative_prompt.strip()
+
+    query_str = urllib.parse.urlencode(params)
+    api_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?{query_str}"
+
+    headers = {
+        "User-Agent": "MAX-AI-Agent/1.0",
+        "Accept": "image/png,image/jpeg,image/*",
+    }
+
+    try:
+        req = urllib.request.Request(api_url, headers=headers, method="GET")
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            data = resp.read()
+
+        if len(data) < 500:
+            return f"Error: Failed to generate image (Response too small: {len(data)} bytes)"
+
+        dest.write_bytes(data)
+        file_size_kb = len(data) / 1024
+
+        termux_hint = ""
+        if shutil.which("termux-open"):
+            termux_hint = f"\n💡 ดูภาพบนมือถือ: termux-open \"{dest}\""
+
+        return (
+            f"🎨 สร้างรูปภาพสำเร็จเรียบร้อยแล้ว!\n"
+            f"• ไฟล์ภาพ: {dest}\n"
+            f"• ขนาดภาพ: {width}x{height} px ({file_size_kb:.1f} KB)\n"
+            f"• โมเดล: {model} (Seed: {seed_val})\n"
+            f"• Prompt: {prompt}{termux_hint}"
+        )
+    except Exception as ex:
+        return f"Error generating image: {ex}"
+
+
+def _builtin_generate_video(
+    prompt: str,
+    output_path: str = "",
+    duration_seconds: int = 4,
+    aspect_ratio: str = "16:9",
+    model: str = "wan2.1",
+) -> str:
+    """Generate AI video / animation and save to MP4/GIF format."""
+    import urllib.request
+    import urllib.parse
+    import time
+    import shutil
+
+    prompt = prompt.strip()
+    if not prompt:
+        return "Error: Prompt cannot be empty"
+
+    duration = max(2, min(duration_seconds, 15))
+    ar = aspect_ratio.strip() if aspect_ratio.strip() else "16:9"
+
+    if output_path.strip():
+        dest = Path(output_path.strip()).resolve()
+    else:
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        dest = (Path.cwd() / f"video_{timestamp}.mp4").resolve()
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    encoded_prompt = urllib.parse.quote(prompt)
+    api_url = f"https://video.pollinations.ai/prompt/{encoded_prompt}?duration={duration}&aspect_ratio={ar}&model={urllib.parse.quote(model)}"
+
+    headers = {
+        "User-Agent": "MAX-AI-Agent/1.0",
+        "Accept": "video/mp4,video/*,*/*",
+    }
+
+    try:
+        req = urllib.request.Request(api_url, headers=headers, method="GET")
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = resp.read()
+
+        if len(data) > 1000:
+            dest.write_bytes(data)
+            size_mb = len(data) / (1024 * 1024)
+            termux_hint = ""
+            if shutil.which("termux-open"):
+                termux_hint = f"\n💡 เปิดวิดีโอบนมือถือ: termux-open \"{dest}\""
+
+            return (
+                f"🎬 สร้างวิดีโอสำเร็จเรียบร้อยแล้ว!\n"
+                f"• ไฟล์วิดีโอ: {dest}\n"
+                f"• ขนาดไฟล์: {size_mb:.2f} MB (ความยาว ~{duration} วินาที, สัดส่วน {ar})\n"
+                f"• โมเดล: {model}\n"
+                f"• Prompt: {prompt}{termux_hint}"
+            )
+        else:
+            return f"Error: ได้รับข้อมูลวิดีโอไม่สมบูรณ์ ({len(data)} bytes)"
+    except Exception as ex:
+        return (
+            f"⚠️ ไม่สามารถดึงวิดีโอจาก Cloud Generator ได้โดยตรง ({ex})\n"
+            f"💡 ข้อแนะนำ: คุณสามารถสั่งให้สร้างภาพผ่าน `generate_image` แล้วนำมาสร้างเป็น GIF/Flipbook/Animation ด้วย Python ได้"
+        )
+
+
+
 
 class MCPManager:
     """Central manager for MCP servers, built-in tools, and function calling integration."""
@@ -1324,6 +1469,62 @@ class MCPManager:
             lambda args: _builtin_export_to_download(
                 source_path=str(args.get("source_path", ".")),
                 output_name=str(args.get("output_name", "")),
+            ),
+        )
+
+        # 25. Generate AI Image
+        self.builtin_tools["generate_image"] = (
+            MCPTool(
+                name="generate_image",
+                description="สร้างรูปภาพด้วย AI ตามคำบรรยาย (Prompt) ความละเอียดสูง บันทึกเป็นไฟล์ภาพ PNG/JPG ลงเครื่อง",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "prompt": {"type": "string", "description": "คำอธิบายภาพที่ต้องการสร้าง เช่น a cybernetic glowing cat in cyberpunk city, 8k"},
+                        "output_path": {"type": "string", "description": "พาธไฟล์ภาพปลายทาง เช่น images/cat.png (หากไม่ระบุจะตั้งชื่ออัตโนมัติตามเวลา)", "default": ""},
+                        "width": {"type": "integer", "description": "ความกว้างของภาพ (pixels, เช่น 1024, 768, 512)", "default": 1024},
+                        "height": {"type": "integer", "description": "ความสูงของภาพ (pixels, เช่น 1024, 768, 512)", "default": 1024},
+                        "model": {"type": "string", "description": "โมเดลที่ต้องการสร้าง (flux, turbo, dall-e-3)", "default": "flux"},
+                        "negative_prompt": {"type": "string", "description": "สิ่งที่ไม่ต้องการให้ปรากฏในภาพ", "default": ""},
+                    },
+                    "required": ["prompt"],
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_generate_image(
+                prompt=str(args.get("prompt", "")),
+                output_path=str(args.get("output_path", "")),
+                width=int(args.get("width", 1024)),
+                height=int(args.get("height", 1024)),
+                model=str(args.get("model", "flux")),
+                negative_prompt=str(args.get("negative_prompt", "")),
+            ),
+        )
+
+        # 26. Generate AI Video
+        self.builtin_tools["generate_video"] = (
+            MCPTool(
+                name="generate_video",
+                description="สร้างวิดีโอหรือคลิปอนิเมชันสั้นด้วย AI ตาม Prompt บันทึกเป็นไฟล์ MP4 ลงเครื่อง",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "prompt": {"type": "string", "description": "คำอธิบายคลิปวิดีโอหรืออนิเมชันที่ต้องการสร้าง เช่น cinematic drone shot flying over futuristic neon city"},
+                        "output_path": {"type": "string", "description": "พาธไฟล์วิดีโอปลายทาง เช่น videos/city.mp4 (หากไม่ระบุจะตั้งชื่ออัตโนมัติตามเวลา)", "default": ""},
+                        "duration_seconds": {"type": "integer", "description": "ความยาวคลิปเป็นวินาที (ค่าเริ่มต้น 4, สูงสุด 15)", "default": 4},
+                        "aspect_ratio": {"type": "string", "description": "สัดส่วนภาพ เช่น 16:9, 9:16, 1:1", "default": "16:9"},
+                        "model": {"type": "string", "description": "โมเดลสร้างวิดีโอ (wan2.1, cogvideo, luma)", "default": "wan2.1"},
+                    },
+                    "required": ["prompt"],
+                },
+                server_name="builtin",
+            ),
+            lambda args: _builtin_generate_video(
+                prompt=str(args.get("prompt", "")),
+                output_path=str(args.get("output_path", "")),
+                duration_seconds=int(args.get("duration_seconds", 4)),
+                aspect_ratio=str(args.get("aspect_ratio", "16:9")),
+                model=str(args.get("model", "wan2.1")),
             ),
         )
 

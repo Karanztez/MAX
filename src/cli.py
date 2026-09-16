@@ -405,10 +405,32 @@ class MaxTerminalApp:
             safe_print(color(f"\n{res}", Colors.GREEN if not res.startswith("Error") else Colors.RED))
             return True
 
+        elif action in {"/image", "/img", "/generate_image"}:
+            prompt_text = " ".join(parts[1:]).strip()
+            if not prompt_text:
+                prompt_text = input("🎨 กรุณากรอกคำบรรยายภาพ (Prompt): ").strip()
+            if prompt_text:
+                safe_print(color(f"🎨 กำลังสร้างรูปภาพตามคำสั่ง: \"{prompt_text}\"...", Colors.YELLOW))
+                res = self.mcp_manager.execute_tool("generate_image", {"prompt": prompt_text})
+                safe_print(color(f"\n{res}", Colors.GREEN if not res.startswith("Error") else Colors.RED))
+            return True
+
+        elif action in {"/video", "/vid", "/generate_video"}:
+            prompt_text = " ".join(parts[1:]).strip()
+            if not prompt_text:
+                prompt_text = input("🎬 กรุณากรอกคำบรรยายคลิปวิดีโอ (Prompt): ").strip()
+            if prompt_text:
+                safe_print(color(f"🎬 กำลังสร้างวิดีโอตามคำสั่ง: \"{prompt_text}\" (อาจใช้เวลาประมาณ 10-30 วินาที)...", Colors.YELLOW))
+                res = self.mcp_manager.execute_tool("generate_video", {"prompt": prompt_text})
+                safe_print(color(f"\n{res}", Colors.GREEN if not res.startswith("Error") else Colors.RED))
+            return True
+
         elif action == "/help":
             safe_print(f"""
 {color("คำสั่งที่ใช้งานได้ (Terminal Commands):", Colors.BOLD)}
   {color('/setup', Colors.CYAN)}                  - ตัวช่วยเลือกผู้ให้บริการ & โมเดล (โหมด 1-2-3-4)
+  {color('/image <prompt>', Colors.CYAN)}        - สร้างรูปภาพ AI (Flux / Turbo / DALL-E) บันทึกลงเครื่อง
+  {color('/video <prompt>', Colors.CYAN)}        - สร้างคลิปวิดีโอ AI (Wan2.1 / MP4) บันทึกลงเครื่อง
   {color('/export [path]', Colors.CYAN)}          - บีบอัดและส่งออกโปรเจกต์ไปยังโฟลเดอร์ Download ของมือถือ/เครื่อง
   {color('/update', Colors.CYAN)}                 - ตรวจสอบและอัปเดตเวอร์ชันโปรแกรมอัตโนมัติ
   {color('/key <api_key>', Colors.CYAN)}          - กรอกหรือแก้ไข API Key ทันทีในแชท
