@@ -307,7 +307,7 @@ class AIClient:
         on_status: Optional[Callable[[str], None]] = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,
-        max_tool_rounds: int = 5,
+        max_tool_rounds: int = 10,
     ) -> tuple[list, list[str]]:
         """
         Multi-turn chat with autonomous tool-calling loop.
@@ -379,6 +379,23 @@ class AIClient:
                     "tool_call_id": tc_id,
                     "content": tool_result,
                 })
+
+        if not final_content.strip():
+            # If the tool loop exhausted max_tool_rounds or ended with empty content,
+            # invoke a synthesis call without tools so the AI summarizes all tool results
+            # and gives the user a complete, helpful answer.
+            status_msg = "🧠 กำลังประมวลผลและสรุปคำตอบ..."
+            logs.append(status_msg)
+            if on_status:
+                on_status(status_msg)
+            try:
+                final_content = self._call(
+                    messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+            except Exception as ex:
+                final_content = f"ดำเนินการเครื่องมือเสร็จสิ้น แต่ไม่สามารถสรุปคำตอบได้: {ex}"
 
         updated = list(history)
         updated.append(user_msg)

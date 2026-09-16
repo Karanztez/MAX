@@ -216,6 +216,44 @@ class TestSkillsAndMCP(unittest.TestCase):
         self.assertEqual(history[-1]["content"], "ผลการคำนวณคือ 100")
         self.assertTrue(len(logs) > 0)
 
+    def test_ai_client_chat_with_tools_synthesis_fallback(self):
+        """Verify that when tool loop finishes with empty content, a synthesis call is triggered."""
+        client = AIClient(api_key="mock-key")
+
+        # Simulate round that returns tool calls up to max_tool_rounds
+        def mock_call_response(messages, **kwargs):
+            return {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "lookup",
+                            "arguments": json.dumps({"q": "test"}),
+                        },
+                    }
+                ],
+            }
+
+        client._call_response = mock_call_response  # type: ignore
+
+        # The synthesis call should be called to generate the final text
+        client._call = lambda msgs, **kwargs: "สรุปผลลัพธ์จากการค้นหาสำเร็จ"  # type: ignore
+
+        history, logs = client.chat_with_tools(
+            user_message="ช่วยค้นหาข้อมูลหน่อย",
+            tools=[{"type": "function", "function": {"name": "lookup"}}],
+            tool_executor=lambda name, args: "พบข้อมูลเวอร์ชัน 1.0",
+            max_tool_rounds=2,
+        )
+
+        self.assertEqual(history[-1]["role"], "assistant")
+        self.assertEqual(history[-1]["content"], "สรุปผลลัพธ์จากการค้นหาสำเร็จ")
+        self.assertTrue(any("กำลังประมวลผลและสรุปคำตอบ" in log for log in logs))
+
 
 if __name__ == "__main__":
     unittest.main()
+
