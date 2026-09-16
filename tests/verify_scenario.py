@@ -71,10 +71,10 @@ def run_tests():
                 "tool_calls": None,
             }
 
-    client._call_response = mock_call_response
+    client._call_response = mock_call_response  # type: ignore[method-assign,assignment]
 
     # Mock the synthesis call response to return a high quality structured answer
-    client._call = lambda msgs, **kwargs: (
+    client._call = lambda messages, **kwargs: (  # type: ignore[method-assign,assignment]
         "### 1. สรุปผลการดำเนินการ (Executive Summary)\n"
         "เชื่อมต่อและดึงข้อมูลจาก repository `https://github.com/Karanztez/MAX` สำเร็จ โดยได้อ่านโครงสร้าง API และ SDK เรียบร้อยแล้ว\n\n"
         "### 2. สิ่งที่ตรวจสอบและพบ (Key Findings)\n"
@@ -122,7 +122,7 @@ def run_tests():
     print("TEST 3: Fallback Summary Generation (When model completely silent)")
     print("=" * 70)
     # Simulate completely silent synthesis call (empty string)
-    client._call = lambda msgs, **kwargs: ""
+    client._call = lambda messages, **kwargs: ""  # type: ignore[method-assign,assignment]
     step = 0
 
     history_fb, logs_fb = client.chat_with_tools(
