@@ -193,7 +193,12 @@ class ChatTab(tk.Frame):
         proj_path = getattr(top, "project_path", os.getcwd())
         model_name = getattr(self.ai, "model", "default")
 
-        project_context = f"[Context: Working in Project '{proj_name}' at '{proj_path}', Model: '{model_name}']"
+        project_context = (
+            f"[Context: Working in Project '{proj_name}' at '{proj_path}', Model: '{model_name}']\n"
+            "Use the available file and command tools for requested code changes. Relative paths are resolved "
+            "from this project directory. After editing, read the changed file or run an appropriate check; "
+            "only report completion when the tool result confirms the change was written successfully."
+        )
         base_prompt = self.sys_entry.get().strip()
         full_system = f"{project_context}\n{base_prompt}" if base_prompt else project_context
         return self.skill_manager.compose_system_prompt(full_system, self.enabled_skills)
@@ -435,7 +440,7 @@ class ChatTab(tk.Frame):
         start_time = time.monotonic()
         try:
             mcp: Optional[MCPManager] = getattr(self.winfo_toplevel(), "mcp_manager", None)
-            tools = mcp.get_openai_tools() if (mcp and mcp.enabled and self.ai.api_mode != "responses") else None
+            tools = mcp.get_openai_tools() if (mcp and mcp.enabled) else None
 
             if tools and mcp:
                 def on_status(text: str) -> None:
@@ -496,7 +501,7 @@ class ChatTab(tk.Frame):
                               model=self.ai.model, api_mode=self.ai.api_mode,
                               system_prompt=system, timeout=self.ai.timeout)
             mcp: Optional[MCPManager] = getattr(self.winfo_toplevel(), "mcp_manager", None)
-            tools = mcp.get_openai_tools() if (mcp and mcp.enabled and client.api_mode != "responses") else None
+            tools = mcp.get_openai_tools() if (mcp and mcp.enabled) else None
 
             if tools and mcp:
                 def on_status(text: str) -> None:

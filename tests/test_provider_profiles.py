@@ -29,6 +29,43 @@ class _Response:
 
 
 class TestProviderProfiles(unittest.TestCase):
+    def test_responses_api_function_tool_payload_and_result(self) -> None:
+        captured = {}
+
+        def fake_urlopen(request, timeout=0):
+            captured["payload"] = json.loads(request.data.decode("utf-8"))
+            return _Response({
+                "output": [{
+                    "type": "function_call",
+                    "id": "fc_1",
+                    "call_id": "call_1",
+                    "name": "write_file",
+                    "arguments": '{"path":"app.py","content":"ok"}',
+                }]
+            })
+
+        client = AIClient(
+            api_key="secret",
+            base_url="https://api.openai.com/v1",
+            model="gpt-test",
+            api_mode="responses",
+        )
+        tools = [{
+            "type": "function",
+            "function": {
+                "name": "write_file",
+                "description": "Write a project file",
+                "parameters": {"type": "object", "properties": {"path": {"type": "string"}}},
+            },
+        }]
+        with patch("urllib.request.urlopen", fake_urlopen):
+            result = client._call_response([{"role": "user", "content": "edit app.py"}], tools=tools)
+
+        self.assertEqual(captured["payload"]["tools"][0]["name"], "write_file")
+        self.assertNotIn("function", captured["payload"]["tools"][0])
+        self.assertEqual(result["tool_calls"][0]["id"], "call_1")
+        self.assertEqual(result["tool_calls"][0]["function"]["name"], "write_file")
+
     def test_provider_profiles(self) -> None:
         profiles = default_profiles()
         native_p = next(p for p in profiles if p["id"] == "maxplus-claude-native")

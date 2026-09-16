@@ -87,6 +87,7 @@ class MaxPlusGUI(tk.Tk):
         self._tray_queue: queue.Queue[str] = queue.Queue()
         self.settings_store = SettingsStore()
         self.mcp_manager = MCPManager()
+        self.mcp_manager.set_workspace_root(self.project_path)
         set_workspace_ui_dispatcher(self._handle_workspace_tool)
         self.profiles, self.selected_profile_id = self.settings_store.load_provider_settings(default_profiles())
         self.api_key = self._active_profile()["api_key"]
@@ -175,6 +176,7 @@ class MaxPlusGUI(tk.Tk):
         if chosen:
             self.project_path = os.path.abspath(chosen)
             self.project_name = os.path.basename(self.project_path)
+            self.mcp_manager.set_workspace_root(self.project_path)
             self.title(f"MAX v{APP_VERSION}")
             self._proj_btn.configure(text=f"📁 {self.project_name}")
             tab = self._current_tab()

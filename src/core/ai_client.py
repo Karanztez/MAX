@@ -68,12 +68,13 @@ class AIClient:
                 str(message.get("content", "")) for message in messages
                 if message.get("role") in {"system", "developer"}
             )
-            input_messages = [self._response_message(message) for message in messages
-                              if message.get("role") not in {"system", "developer"}]
+            input_messages = self._response_input_items(messages)
             payload: dict[str, Any] = {"model": self.model, "input": input_messages,
                                        "max_output_tokens": max_tokens}
             if instructions:
                 payload["instructions"] = instructions
+            if tools:
+                payload["tools"] = [self._response_tool(tool) for tool in tools]
         else:
             url = f"{self.base_url}/chat/completions"
             payload = {
@@ -98,7 +99,24 @@ class AIClient:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 if self.api_mode == "responses":
-                    return {"role": "assistant", "content": self._response_text(data)}
+                    tool_calls = []
+                    for item in data.get("output", []):
+                        if isinstance(item, dict) and item.get("type") == "function_call":
+                            tool_calls.append({
+                                "id": str(item.get("call_id") or item.get("id") or ""),
+                                "type": "function",
+                                "function": {
+                                    "name": str(item.get("name") or ""),
+                                    "arguments": item.get("arguments") or "{}",
+                                },
+                            })
+                    result: dict[str, Any] = {
+                        "role": "assistant",
+                        "content": self._response_text(data, required=not tool_calls),
+                    }
+                    if tool_calls:
+                        result["tool_calls"] = tool_calls
+                    return result
                 choices = data.get("choices", [])
                 if not choices:
                     return {"role": "assistant", "content": ""}
@@ -110,9 +128,10 @@ class AIClient:
                 wait = 2 ** _retry          # 1s, 2s, 4s
                 time.sleep(wait)
                 return self._call_response(messages, temperature, max_tokens, tools, _retry + 1)
-            # If endpoint rejects tools (HTTP 400 tool_schema_invalid / invalid_request), retry seamlessly without tools
+            # Never silently remove tools: doing so lets a model claim an edit succeeded
+            # even though it was not given any way to touch the project.
             if e.code == 400 and tools and any(k in err_body.lower() for k in ["tool", "invalid_request", "schema", "function", "unsupported"]):
-                return self._call_response(messages, temperature, max_tokens, tools=None, _retry=_retry)
+                raise RuntimeError(f"The selected API/model rejected tool calling: {err_body}") from e
             raise RuntimeError(f"HTTP {e.code}: {err_body}") from e
         except urllib.error.URLError as e:
             raise RuntimeError(f"Connection error: {e.reason}") from e
@@ -141,8 +160,48 @@ class AIClient:
                 converted.append({"type": "input_image", "image_url": url})
         return {"role": role, "content": converted}
 
+    @classmethod
+    def _response_input_items(cls, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Convert chat-style history, including function calls, to Responses input items."""
+        items: list[dict[str, Any]] = []
+        for message in messages:
+            role = str(message.get("role", "user"))
+            if role in {"system", "developer"}:
+                continue
+            if role == "tool":
+                items.append({
+                    "type": "function_call_output",
+                    "call_id": str(message.get("tool_call_id") or ""),
+                    "output": str(message.get("content") or ""),
+                })
+                continue
+
+            content = message.get("content")
+            if content not in (None, "", []):
+                items.append(cls._response_message(message))
+            for call in message.get("tool_calls") or []:
+                function = call.get("function", {}) if isinstance(call, dict) else {}
+                items.append({
+                    "type": "function_call",
+                    "call_id": str(call.get("id") or ""),
+                    "name": str(function.get("name") or ""),
+                    "arguments": function.get("arguments") or "{}",
+                })
+        return items
+
     @staticmethod
-    def _response_text(data: dict[str, Any]) -> str:
+    def _response_tool(tool: dict[str, Any]) -> dict[str, Any]:
+        """Convert a Chat Completions function tool to Responses API format."""
+        function = tool.get("function", {})
+        return {
+            "type": "function",
+            "name": str(function.get("name") or ""),
+            "description": str(function.get("description") or ""),
+            "parameters": function.get("parameters") or {"type": "object", "properties": {}},
+        }
+
+    @staticmethod
+    def _response_text(data: dict[str, Any], required: bool = True) -> str:
         direct = data.get("output_text")
         if isinstance(direct, str) and direct:
             return direct
@@ -153,7 +212,9 @@ class AIClient:
                     parts.append(str(item.get("text", "")))
         if parts:
             return "\n".join(parts)
-        raise RuntimeError("API response did not contain output text")
+        if required:
+            raise RuntimeError("API response did not contain output text")
+        return ""
 
     def ask(
         self,
@@ -327,8 +388,8 @@ class AIClient:
         round_idx = 0
         final_content = ""
 
-        # If tools are not provided or in responses API mode, fallback to regular call
-        if not tools or self.api_mode == "responses":
+        # If tools are not provided, fallback to a regular call.
+        if not tools:
             reply = self._call(messages, temperature=temperature, max_tokens=max_tokens)
             updated = list(history)
             updated.append(user_msg)

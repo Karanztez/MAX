@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.0.5] - 2026-09-16
+
+### Fixed
+
+- Project file, shell, Git, Python, and TeamAI tools now resolve relative paths from the folder selected in the GUI instead of the EXE launch directory.
+- Responses API profiles can now execute autonomous function/tool calls, including multi-step file edits.
+- Tool-schema errors are surfaced instead of silently disabling tools and allowing false success reports.
+- File write and targeted-edit tools now verify persisted content before reporting success.
+
+---
+
 ## [v1.0.4] - 2026-09-16
 
 ### Fixed

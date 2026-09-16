@@ -6,7 +6,7 @@ long_description = (this_directory / "README.md").read_text(encoding="utf-8") if
 
 setup(
     name="max-ai",
-    version="1.0.4",
+    version="1.0.5",
     description="MAX AI Agent — Multi-Provider AI Assistant & Autonomous Tool Runner for GUI & Terminal",
     long_description=long_description,
     long_description_content_type="text/markdown",

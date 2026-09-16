@@ -164,6 +164,29 @@ class TestSkillsAndMCP(unittest.TestCase):
             mgr3 = MCPManager(config_path=cfg_file)
             self.assertNotIn("demo_server", mgr3.server_configs.get("servers", {}))
 
+    def test_selected_workspace_is_used_for_relative_file_and_command_tools(self):
+        """Relative file paths and commands must use the selected project directory."""
+        with TemporaryDirectory() as tmpdir:
+            mgr = MCPManager(config_path=Path(tmpdir) / "mcp_servers.json")
+            previous_root = mgr.workspace_root
+            try:
+                mgr.set_workspace_root(tmpdir)
+                result = mgr.execute_tool("write_file", {
+                    "path": "src/example.py",
+                    "content": "VALUE = 42\n",
+                })
+                expected = Path(tmpdir) / "src" / "example.py"
+                self.assertTrue(expected.exists())
+                self.assertEqual(expected.read_text(encoding="utf-8"), "VALUE = 42\n")
+                self.assertNotIn("Error", result)
+
+                command = mgr.execute_tool("run_command", {
+                    "command": f'{sys.executable} -c "from pathlib import Path; print(Path.cwd())"',
+                })
+                self.assertIn(str(Path(tmpdir).resolve()), command)
+            finally:
+                mgr.set_workspace_root(previous_root)
+
     def test_ai_client_chat_with_tools_mock(self):
         """Simulate autonomous tool loop in AIClient."""
         client = AIClient(api_key="mock-key")
@@ -216,6 +239,41 @@ class TestSkillsAndMCP(unittest.TestCase):
         self.assertEqual(history[-1]["content"], "ผลการคำนวณคือ 100")
         self.assertTrue(len(logs) > 0)
 
+    def test_responses_mode_executes_tools_and_converts_function_history(self):
+        """Responses API profiles must participate in the autonomous tool loop."""
+        client = AIClient(api_key="mock-key", api_mode="responses")
+        calls = 0
+
+        def mock_call_response(messages, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return {
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [{
+                        "id": "call_write",
+                        "type": "function",
+                        "function": {"name": "write_file", "arguments": '{"path":"demo.txt","content":"ok"}'},
+                    }],
+                }
+            converted = AIClient._response_input_items(messages)
+            self.assertTrue(any(item.get("type") == "function_call" for item in converted))
+            self.assertTrue(any(item.get("type") == "function_call_output" for item in converted))
+            return {"role": "assistant", "content": "File updated."}
+
+        client._call_response = mock_call_response  # type: ignore[method-assign]
+        executed = []
+        history, _logs = client.chat_with_tools(
+            "Update demo.txt",
+            tools=[{"type": "function", "function": {"name": "write_file", "parameters": {"type": "object"}}}],
+            tool_executor=lambda name, args: executed.append((name, args)) or "Write verified",
+        )
+
+        self.assertEqual(executed[0][0], "write_file")
+        self.assertEqual(executed[0][1]["content"], "ok")
+        self.assertEqual(history[-1]["content"], "File updated.")
+
     def test_ai_client_chat_with_tools_synthesis_fallback(self):
         """Verify that when tool loop finishes with empty content, a synthesis call is triggered."""
         client = AIClient(api_key="mock-key")
@@ -256,4 +314,3 @@ class TestSkillsAndMCP(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

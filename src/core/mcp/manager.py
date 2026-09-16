@@ -11,10 +11,12 @@ try:
     from .builtins import get_all_builtin_tools
     from .connection import MCPServerConnection
     from .types import MCPTool
+    from .workspace_context import get_workspace_root, set_workspace_root
 except (ImportError, ModuleNotFoundError):
     from src.core.mcp.builtins import get_all_builtin_tools  # type: ignore[no-redef]
     from src.core.mcp.connection import MCPServerConnection  # type: ignore[no-redef]
     from src.core.mcp.types import MCPTool  # type: ignore[no-redef]
+    from src.core.mcp.workspace_context import get_workspace_root, set_workspace_root  # type: ignore[no-redef]
 
 
 class MCPManager:
@@ -45,6 +47,14 @@ class MCPManager:
     def _register_builtins(self) -> None:
         """Register all modular built-in tools."""
         self.builtin_tools = get_all_builtin_tools()
+
+    def set_workspace_root(self, path: str | Path) -> Path:
+        """Point all relative built-in tool paths at the selected project."""
+        return set_workspace_root(path)
+
+    @property
+    def workspace_root(self) -> Path:
+        return get_workspace_root()
 
     def load_config(self) -> None:
         """Load server configurations from JSON file."""

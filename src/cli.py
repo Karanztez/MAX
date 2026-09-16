@@ -974,7 +974,7 @@ class MaxTerminalApp:
         """Execute single prompt and exit."""
         self._ensure_credentials()
         client = self._create_client()
-        tools = self.mcp_manager.get_openai_tools() if (self.mcp_manager.enabled and client.api_mode != "responses") else None
+        tools = self.mcp_manager.get_openai_tools() if self.mcp_manager.enabled else None
 
         if tools:
             def on_status(text: str) -> None:
@@ -1014,7 +1014,7 @@ class MaxTerminalApp:
 
                 # Run conversation using active screen model/profile if defined
                 client = self._create_client(model=cur_screen.model, profile_id=cur_screen.profile_id)
-                tools = self.mcp_manager.get_openai_tools() if (self.mcp_manager.enabled and client.api_mode != "responses") else None
+                tools = self.mcp_manager.get_openai_tools() if self.mcp_manager.enabled else None
 
                 ai_name = cur_screen.name if cur_screen.role != "general" else "AI"
                 safe_print(f"\n{color(ai_name, Colors.BOLD + Colors.GREEN)}: ", end="", flush=True)

@@ -12,6 +12,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 try:
+    from ..workspace_context import get_workspace_root
+except (ImportError, ModuleNotFoundError):
+    from src.core.mcp.workspace_context import get_workspace_root  # type: ignore[no-redef]
+
+try:
     from ..types import MCPTool
 except (ImportError, ModuleNotFoundError):
     from src.core.mcp.types import MCPTool  # type: ignore[no-redef]
@@ -56,7 +61,7 @@ def run_teamai(args: list[str], cwd: Optional[str] = None, timeout: int = 90) ->
         )
 
     full_cmd = cmd_prefix + args
-    work_dir = cwd or str(Path.cwd())
+    work_dir = cwd or str(get_workspace_root())
 
     try:
         # Use shell=True on Windows if executing batch file or npx

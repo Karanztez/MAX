@@ -21,8 +21,10 @@ from typing import Any, Optional
 
 try:
     from ..types import MCPTool
+    from ..workspace_context import get_workspace_root
 except (ImportError, ModuleNotFoundError):
     from src.core.mcp.types import MCPTool  # type: ignore[no-redef]
+    from src.core.mcp.workspace_context import get_workspace_root  # type: ignore[no-redef]
 
 try:
     import psutil  # type: ignore[import-untyped]
@@ -119,6 +121,7 @@ def _builtin_run_command(command: str, timeout_seconds: int = 30, background: bo
                 proc = subprocess.Popen(
                     cmd,
                     shell=True,
+                    cwd=str(get_workspace_root()),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
@@ -145,6 +148,7 @@ def _builtin_run_command(command: str, timeout_seconds: int = 30, background: bo
         proc = subprocess.Popen(
             cmd,
             shell=True,
+            cwd=str(get_workspace_root()),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -184,6 +188,7 @@ def _builtin_run_python_code(code: str, timeout_seconds: int = 30) -> str:
     try:
         proc = subprocess.Popen(
             [sys.executable, temp_script],
+            cwd=str(get_workspace_root()),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,

@@ -12,16 +12,15 @@ from typing import Any, Optional
 try:
     from ..diff_engine import render_diff, replace_content_chunk
     from ..types import MCPTool
+    from ..workspace_context import resolve_workspace_path
 except (ImportError, ModuleNotFoundError):
     from src.core.mcp.diff_engine import render_diff, replace_content_chunk  # type: ignore[no-redef]
     from src.core.mcp.types import MCPTool  # type: ignore[no-redef]
+    from src.core.mcp.workspace_context import resolve_workspace_path  # type: ignore[no-redef]
 
 
 def _resolve_safe_path(target_path: str) -> Path:
-    p = Path(target_path).expanduser()
-    if not p.is_absolute():
-        p = (Path.cwd() / p).resolve()
-    return p
+    return resolve_workspace_path(target_path)
 
 
 def _builtin_list_dir(path: str = ".", max_depth: int = 2) -> str:
@@ -93,6 +92,8 @@ def _builtin_write_file(path: str, content: str, overwrite: bool = True) -> str:
         old_content = target.read_text(encoding="utf-8", errors="replace") if target.exists() else ""
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
+        if target.read_text(encoding="utf-8") != content:
+            return f"Error: Verification failed after writing '{target}'."
 
         diff = render_diff(old_content, content, filename=target.name) if old_content else ""
         diff_part = f"\n\n{diff}" if diff else ""
@@ -128,6 +129,8 @@ def _builtin_replace_file_content(
             return updated_text  # contains error description
 
         target.write_text(updated_text, encoding="utf-8")
+        if target.read_text(encoding="utf-8") != updated_text:
+            return f"Error: Verification failed after editing '{target}'."
         return (
             f"✅ แก้ไขโค้ดในไฟล์ `{target.name}` สำเร็จเรียบร้อยแล้ว!\n\n"
             f"{diff_summary}"
