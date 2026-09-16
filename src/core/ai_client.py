@@ -123,8 +123,8 @@ class AIClient:
                 return choices[0].get("message", {"role": "assistant", "content": ""})
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="replace")
-            # 429 rate limit → retry with backoff
-            if e.code == 429 and _retry < 3:
+            # 429 rate limit or 500/502/503/504 temporary server unavailable → retry with backoff
+            if e.code in (429, 500, 502, 503, 504) and _retry < 3:
                 wait = 2 ** _retry          # 1s, 2s, 4s
                 time.sleep(wait)
                 return self._call_response(messages, temperature, max_tokens, tools, _retry + 1)
@@ -402,12 +402,23 @@ class AIClient:
 
         while round_idx < max_tool_rounds and not should_break_loop:
             round_idx += 1
-            assistant_msg = self._call_response(
-                messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                tools=tools,
-            )
+            try:
+                assistant_msg = self._call_response(
+                    messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    tools=tools,
+                )
+            except Exception as ex:
+                err_msg = str(ex)
+                logs.append(f"⚠️ เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ AI: {err_msg}")
+                if on_status:
+                    on_status(f"⚠️ เซิร์ฟเวอร์ขัดข้อง: {err_msg[:80]}")
+                # If we already have tool actions executed, don't crash and drop everything!
+                # Break out and synthesize or generate a fallback summary from what was gathered.
+                if logs:
+                    break
+                raise
             messages.append(assistant_msg)
 
             tool_calls = assistant_msg.get("tool_calls")
@@ -547,6 +558,11 @@ class AIClient:
             lines.append("⚠️ **ข้อสังเกต:** มีบางคำสั่งหรือการเชื่อมต่อพบข้อผิดพลาด กรุณาตรวจสอบรายละเอียดข้างต้น หรือระบุพารามิเตอร์เพิ่มเติมเพื่อให้ระบบช่วยดำเนินการแก้ไขต่อไปครับ")
         else:
             lines.append("✅ การดำเนินการของเครื่องมือเสร็จสิ้นสมบูรณ์ หากต้องการให้ปรับแต่งหรือเขียนโค้ดเพิ่มเติม สามารถสั่งการต่อได้ทันทีครับ")
+
+        server_errs = [l for l in logs if "⚠️ เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ AI:" in l]
+        if server_errs:
+            err_line = server_errs[-1].replace("⚠️ เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ AI:", "").strip()
+            lines.append(f"\n> ℹ️ **หมายเหตุการเชื่อมต่อ:** ในขั้นตอนสุดท้ายเซิร์ฟเวอร์ AI ปลายทางขัดข้องชั่วคราว ({err_line}) ระบบจึงได้รวบรวมข้อมูลจากการตรวจสอบข้างต้นมาให้เรียบร้อยแล้วครับ")
 
         return "\n".join(lines)
 

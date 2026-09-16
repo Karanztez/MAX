@@ -207,6 +207,7 @@ class MaxTerminalApp:
             "- Use available file, command, web, and API tools for requested tasks. Relative paths resolve from this project.\n"
             "- Inspect relevant files before editing, verify changes on disk, and run appropriate checks.\n"
             "- Think step-by-step. If a tool fails (HTTP error, connection issue, file error), do not repeat the exact failing call blindly. Adapt parameters or explore alternatives.\n"
+            "- When exploring a project, call list_dir first, then read_file on README/config files. Do not call git tools if it is not a git repository.\n"
             "- Always conclude by providing a thorough, clear summary in Thai of all actions taken, results, and recommendations. Never return an empty answer."
         )
         effective_prompt = f"{workspace_prompt}\n{system_prompt}" if system_prompt else workspace_prompt

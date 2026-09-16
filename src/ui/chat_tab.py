@@ -204,7 +204,10 @@ class ChatTab(tk.Frame):
             "parse the structure, and provide actionable integration code or explanations.\n"
             "4. Mandatory Comprehensive Response: When your tool execution finishes, you MUST ALWAYS provide a complete, well-structured final answer "
             "in Thai detailing: (a) what you investigated or executed, (b) what files or APIs were connected/modified, (c) any issues or findings, "
-            "and (d) actionable next steps or sample code for the user. NEVER finish with an empty response or a generic completion phrase."
+            "and (d) actionable next steps or sample code for the user. NEVER finish with an empty response or a generic completion phrase.\n"
+            "5. Project Exploration Efficiency: When asked to inspect or explore a project ('อ่านข้อมูลโปรเจกต์', 'สำรวจโปรเจกต์'): "
+            "Start by calling list_dir to inspect directory structure, then read_file on README.md or project configuration files (e.g. package.json, pyproject.toml). "
+            "If the project is not a git repository, do not call git tools. Deliver your complete structured summary promptly within 2-4 tool calls."
         )
         base_prompt = self.sys_entry.get().strip()
         full_system = f"{project_context}\n{base_prompt}" if base_prompt else project_context

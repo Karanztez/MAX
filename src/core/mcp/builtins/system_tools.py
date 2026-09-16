@@ -246,15 +246,34 @@ def _builtin_run_python_code(code: str, timeout_seconds: int = 30) -> str:
             pass
 
 
+def _is_git_repo() -> tuple[bool, Path]:
+    ws = get_workspace_root()
+    cur: Optional[Path] = ws
+    while cur is not None and cur != cur.parent:
+        if (cur / ".git").exists():
+            return True, ws
+        cur = cur.parent
+    return False, ws
+
+
 def _builtin_git_status() -> str:
+    is_git, ws = _is_git_repo()
+    if not is_git:
+        return f"ℹ️ โฟลเดอร์ '{ws.name}' ไม่ได้เป็น Git repository (.git ไม่พบ) แนะนำให้ใช้เครื่องมือ list_dir เพื่อดูไฟล์ในโปรเจกต์"
     return _builtin_run_command("git status", timeout_seconds=15)
 
 
 def _builtin_git_diff() -> str:
+    is_git, ws = _is_git_repo()
+    if not is_git:
+        return f"ℹ️ โฟลเดอร์ '{ws.name}' ไม่ได้เป็น Git repository (.git ไม่พบ)"
     return _builtin_run_command("git diff", timeout_seconds=15)
 
 
 def _builtin_git_log(count: int = 5) -> str:
+    is_git, ws = _is_git_repo()
+    if not is_git:
+        return f"ℹ️ โฟลเดอร์ '{ws.name}' ไม่ได้เป็น Git repository (.git ไม่พบ)"
     return _builtin_run_command(f"git log -n {count} --oneline", timeout_seconds=15)
 
 
