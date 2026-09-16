@@ -89,18 +89,16 @@ GPT_PRO_SUPREME_MODELS = [
 ]
 
 OPENAI_MODELS = [
-    "gpt-6-astra",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-5.6-luna",
-    "gpt-5.3-codex",
+    "gpt-5.5",
 ]
 
 GPT_IMAGE_MODELS = [
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
     "dall-e-3",
-    "gpt-image-1",
-    "gpt-image-hd",
-    "gpt-image-standard",
 ]
 
 NAI_IMAGE_MODELS = [
@@ -119,8 +117,8 @@ GROK_IMAGE_MODELS = [
 ]
 
 NATIVE_POOL_MODELS = [
-    "sonnet-4-5",
     "haiku",
+    "sonnet-4-5",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
 ]
@@ -135,7 +133,7 @@ def default_profiles() -> list[dict[str, Any]]:
             "api_mode": "chat_completions",
             "api_key": "",
             "models": list(NATIVE_POOL_MODELS),
-            "model": NATIVE_POOL_MODELS[0],
+            "model": "gpt-5.6-sol",
         },
         {
             "id": "maxplus-claude-native",
@@ -203,7 +201,7 @@ def default_profiles() -> list[dict[str, Any]]:
         {
             "id": "maxplus-gpt-image",
             "name": "GPT Image (สร้างภาพ)",
-            "base_url": "https://api.maxplus-ai.cc/gpt-image/v1",
+            "base_url": "https://api.maxplus-ai.cc/v1",
             "api_mode": "chat_completions",
             "api_key": "",
             "models": list(GPT_IMAGE_MODELS),

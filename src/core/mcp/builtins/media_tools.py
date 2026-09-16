@@ -83,7 +83,7 @@ def _builtin_export_to_download(source_path: str = ".", output_name: str = "") -
 def _get_image_provider_credentials(provider: str) -> tuple[str, str]:
     """Retrieve base_url and api_key for image generation provider from stored settings."""
     provider_urls = {
-        "gpt-image": "https://api.maxplus-ai.cc/gpt-image/v1",
+        "gpt-image": "https://api.maxplus-ai.cc/v1",
         "nai-image": "https://api.maxplus-ai.cc/nai-image/v1",
         "grok-image": "https://api.maxplus-ai.cc/grok-image/v1",
     }
@@ -101,10 +101,16 @@ def _get_image_provider_credentials(provider: str) -> tuple[str, str]:
         store = SettingsStore()
         profiles, selected_id = store.load_provider_settings(default_profiles())
 
-        # 1. Exact match on profile id or matching base_url
+        # 1. Exact match on dedicated image profile or native pool
         for p in profiles:
+            p_id = str(p.get("id", "")).lower()
+            p_name = str(p.get("name", "")).lower()
             p_url = str(p.get("base_url", "")).strip().rstrip("/")
-            if provider in str(p.get("id", "")).lower() or (base_url and base_url.lower() == p_url.lower()):
+            if provider == "gpt-image":
+                if ("gpt-image" in p_id or "image gpt" in p_name or p_id == "maxplus-native" or p_url == "https://api.maxplus-ai.cc/v1"):
+                    if p.get("api_key"):
+                        return (p_url or base_url, str(p["api_key"]).strip())
+            elif provider in p_id or (base_url and base_url.lower() == p_url.lower()):
                 if p.get("api_key"):
                     return (p_url or base_url, str(p["api_key"]).strip())
 
@@ -259,18 +265,24 @@ def _builtin_generate_image(
             chosen_provider = "grok-image"
             if model in ("dall-e-3", "auto", ""):
                 model = "grok-imagine-image-2.0"
-        elif "dall-e" in m_lower or "gpt" in m_lower:
+        elif "dall-e" in m_lower or "gpt" in m_lower or "sol" in m_lower or "terra" in m_lower:
             chosen_provider = "gpt-image"
+            if model in ("dall-e-3", "auto", ""):
+                model = "gpt-5.6-sol"
         elif "flux" in m_lower or "turbo" in m_lower:
             chosen_provider = "pollinations"
         else:
             chosen_provider = "gpt-image"
+            if model in ("dall-e-3", "auto", ""):
+                model = "gpt-5.6-sol"
     else:
         # Align default model with chosen provider
         if chosen_provider == "nai-image" and model in ("dall-e-3", "auto", ""):
             model = "nai-diffusion-4-5-full"
         elif chosen_provider == "grok-image" and model in ("dall-e-3", "auto", ""):
             model = "grok-imagine-image-2.0"
+        elif chosen_provider == "gpt-image" and model in ("dall-e-3", "auto", ""):
+            model = "gpt-5.6-sol"
 
     # If MaxPlus Image Provider requested
     if chosen_provider in ("gpt-image", "nai-image", "grok-image"):
@@ -425,8 +437,8 @@ def get_media_tools() -> dict[str, tuple[MCPTool, Any]]:
                         },
                         "model": {
                             "type": "string",
-                            "description": "โมเดลที่ต้องการสร้าง เช่น dall-e-3, nai-diffusion-4-5-full, grok-imagine-image-2.0, gpt-image-1, flux",
-                            "default": "dall-e-3",
+                            "description": "โมเดลที่ต้องการสร้าง เช่น gpt-5.6-sol, gpt-5.6-terra, nai-diffusion-4-5-full, grok-imagine-image-2.0, flux",
+                            "default": "gpt-5.6-sol",
                         },
                         "output_path": {"type": "string", "description": "พาธไฟล์ภาพปลายทาง เช่น images/cat.png (หากไม่ระบุจะตั้งชื่ออัตโนมัติตามเวลา)", "default": ""},
                         "width": {"type": "integer", "description": "ความกว้างของภาพ (pixels, เช่น 1024, 768, 512)", "default": 1024},

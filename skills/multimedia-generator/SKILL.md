@@ -17,14 +17,14 @@ default: false
     - แนวนอน (16:9): `1280x720` หรือ `1024x576` (เหมาะสำหรับ Wallpaper, Banner, Concept Art, Background)
     - แนวตั้ง (9:16): `720x1280` หรือ `576x1024` (เหมาะสำหรับ Mobile Screen, Story, Character Full Body)
 - **ผู้ให้บริการและโมเดลที่แนะนำ (MaxPlus Built-in & Web)**:
-  - **GPT Image (`provider="gpt-image"`)**:
-    - `dall-e-3`: คุณภาพระดับพรีเมียม สมจริง เข้าใจ Prompt ที่ซับซ้อนได้แม่นยำที่สุด
-    - `gpt-image-1`, `gpt-image-hd`, `gpt-image-standard`: สำหรับภาพกราฟิกความละเอียดสูง
+  - **GPT Image / Native (`provider="gpt-image"`)**:
+    - `gpt-5.6-sol`, `gpt-5.6-terra`: โมเดล GPT เจนเนอเรชันล่าสุด เข้าใจ Prompt ลึกซึ้ง
+    - `dall-e-3`: คุณภาพระดับพรีเมียม สมจริง เข้าใจ Prompt ที่ซับซ้อน
   - **NAI Image (`provider="nai-image"`)**:
-    - `nai-diffusion-3`, `nai-diffusion-anime`: ผู้เชี่ยวชาญสไตล์ Anime, Manga, Light Novel, 2D/2.5D Art ระดับโลก
-    - `nai-diffusion-furry-3`: สำหรับสัตว์แฟนตาซีและตัวละครสไตล์ Anthropomorphic
+    - `nai-diffusion-4-5-full`: โมเดลล่าสุดสำหรับสไตล์ Anime, Manga, Light Novel, 2D/2.5D Art ระดับโลก
+    - `nai-diffusion-3`, `nai-diffusion-furry-3`: สำหรับสัตว์แฟนตาซีและตัวละครสไตล์ Anthropomorphic
   - **Grok Image (`provider="grok-image"`)**:
-    - `grok-2-image`: ความคิดสร้างสรรค์สูง คมชัด แปลกใหม่และมีสไตล์เฉพาะตัว
+    - `grok-imagine-image-2.0`: ความคิดสร้างสรรค์สูง คมชัด รองรับ Image-to-Image / `reference_images`
   - **Flux / Turbo (`provider="pollinations"`)**:
     - `flux`: เครื่องยนต์สำรองคุณภาพสูงฟรี เปิดกว้าง รายละเอียดคมชัด
 - **พารามิเตอร์เพิ่มเติม**:

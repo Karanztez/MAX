@@ -62,8 +62,9 @@ class TestMediaProviders(unittest.TestCase):
         self.assertIn("maxplus-native", ids)
 
         gpt_prof = next(p for p in profiles if p["id"] == "maxplus-gpt-image")
-        self.assertEqual(gpt_prof["base_url"], "https://api.maxplus-ai.cc/gpt-image/v1")
+        self.assertEqual(gpt_prof["base_url"], "https://api.maxplus-ai.cc/v1")
         self.assertEqual(gpt_prof["models"], list(GPT_IMAGE_MODELS))
+        self.assertEqual(gpt_prof["model"], "gpt-5.6-sol")
 
         nai_prof = next(p for p in profiles if p["id"] == "maxplus-nai-image")
         self.assertEqual(nai_prof["base_url"], "https://api.maxplus-ai.cc/nai-image/v1")
@@ -77,12 +78,14 @@ class TestMediaProviders(unittest.TestCase):
 
         native_prof = next(p for p in profiles if p["id"] == "maxplus-native")
         self.assertEqual(native_prof["base_url"], "https://api.maxplus-ai.cc/v1")
+        self.assertIn("gpt-5.6-sol", native_prof["models"])
+        self.assertIn("gpt-5.6-terra", native_prof["models"])
         self.assertIn("sonnet-4-5", native_prof["models"])
         self.assertIn("haiku", native_prof["models"])
 
     def test_get_image_provider_credentials_urls(self):
         gpt_url, _ = _get_image_provider_credentials("gpt-image")
-        self.assertEqual(gpt_url, "https://api.maxplus-ai.cc/gpt-image/v1")
+        self.assertEqual(gpt_url, "https://api.maxplus-ai.cc/v1")
 
         nai_url, _ = _get_image_provider_credentials("nai-image")
         self.assertEqual(nai_url, "https://api.maxplus-ai.cc/nai-image/v1")
