@@ -24,7 +24,8 @@ if os.path.exists(os.path.abspath('src/assets')):
 for t in ['tcl8.6', 'tk8.6']:
     p = os.path.join(_tcl, t)
     if os.path.exists(p):
-        extra_datas.append((p, f'_{t.split(".")[0]}_data'))
+        target = '_tcl_data' if t.startswith('tcl') else '_tk_data'
+        extra_datas.append((p, target))
 
 a = Analysis(
     ['main.py'],
@@ -73,4 +74,3 @@ exe = EXE(
     entitlements_file=None,
     icon='icon.ico' if os.path.exists('icon.ico') else None,
 )
-

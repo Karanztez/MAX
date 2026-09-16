@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.0.4] - 2026-09-16
+
+### Fixed
+
+- Windows EXE no longer closes silently at startup because Tcl/Tk runtime data is now packaged under the paths expected by PyInstaller.
+- Release CI now smoke-tests the packaged GUI before uploading it.
+
+---
+
 ## [v1.0.3] - 2026-09-16
 
 ### Added
