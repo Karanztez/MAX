@@ -41,6 +41,11 @@ class TestBumpVersion(unittest.TestCase):
         notes = extract_release_notes("v99.99.99")
         self.assertTrue(len(notes) > 0)
 
+    def test_update_changelog(self) -> None:
+        from scripts.bump_version import update_changelog
+        # Should not raise exception
+        update_changelog("1.0.1")
+
 
 if __name__ == "__main__":
     unittest.main()

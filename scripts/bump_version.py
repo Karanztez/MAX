@@ -7,6 +7,7 @@ Used by GitHub Actions and local release workflows.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import os
 import re
 import subprocess
@@ -102,6 +103,62 @@ def apply_version(new_version: str) -> None:
         pyproject_path.write_text(content, encoding="utf-8")
 
 
+def update_changelog(new_version: str) -> None:
+    """Updates CHANGELOG.md to promote [Unreleased] or add entry for new_version."""
+    changelog_path = ROOT_DIR / "CHANGELOG.md"
+    if not changelog_path.exists():
+        return
+
+    ver = new_version.strip().lstrip("v")
+    tag = f"v{ver}"
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    content = changelog_path.read_text(encoding="utf-8")
+
+    # If version already exists in CHANGELOG.md, do nothing
+    if re.search(rf'##\s*\[?v?{re.escape(ver)}\]?', content):
+        return
+
+    unreleased_match = re.search(r'(##\s*\[?Unreleased\]?[^\n]*\n)(.*?)(?=\n##\s|\Z)', content, re.DOTALL | re.IGNORECASE)
+    if unreleased_match:
+        unreleased_header = unreleased_match.group(1)
+        unreleased_body = unreleased_match.group(2).strip()
+
+        if unreleased_body:
+            # Promote unreleased notes to new version and create fresh [Unreleased]
+            replacement = (
+                f"## [Unreleased]\n\n"
+                f"---\n\n"
+                f"## [{tag}] - {today}\n\n"
+                f"{unreleased_body}\n"
+            )
+            content = content.replace(unreleased_match.group(0), replacement)
+        else:
+            # Empty unreleased, add new section
+            git_notes = get_git_commit_log()
+            replacement = (
+                f"## [Unreleased]\n\n"
+                f"---\n\n"
+                f"## [{tag}] - {today}\n\n"
+                f"### Added\n"
+                f"{git_notes}\n"
+            )
+            content = content.replace(unreleased_match.group(0), replacement)
+    else:
+        # Prepend after header
+        git_notes = get_git_commit_log()
+        new_entry = (
+            f"## [Unreleased]\n\n"
+            f"---\n\n"
+            f"## [{tag}] - {today}\n\n"
+            f"### Added\n"
+            f"{git_notes}\n\n"
+            f"---\n\n"
+        )
+        content = new_entry + content
+
+    changelog_path.write_text(content, encoding="utf-8")
+
+
 def get_git_commit_log() -> str:
     try:
         # Get last tag
@@ -179,6 +236,7 @@ def main() -> None:
     parser.add_argument("--bump", choices=["patch", "minor", "major"], help="Bump version type")
     parser.add_argument("--set-version", help="Explicitly set a version")
     parser.add_argument("--notes", help="Extract and print release notes for the given version")
+    parser.add_argument("--update-changelog", help="Update CHANGELOG.md with the given version")
     parser.add_argument("--output-file", help="Write output to a specific file")
 
     args = parser.parse_args()
@@ -200,6 +258,10 @@ def main() -> None:
         target_version = args.set_version.strip().lstrip("v")
         apply_version(target_version)
         print(f"v{target_version}")
+        return
+
+    if args.update_changelog:
+        update_changelog(args.update_changelog)
         return
 
     if args.notes:

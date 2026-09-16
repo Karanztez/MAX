@@ -45,7 +45,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Compute Next Version & Extract Notes
+      - name: Compute Next Version, Update Changelog & Push Back to Repo
         id: version_step
         shell: pwsh
         run: |
@@ -66,12 +66,16 @@ jobs:
               python scripts/bump_version.py --notes $newTag --output-file "release_notes.md"
             }
 
-            git add src/__init__.py src/core/updater.py src/core/mcp_manager.py setup.py pyproject.toml
+            # Update CHANGELOG.md with new version section
+            python scripts/bump_version.py --update-changelog $newTag
+
+            # Commit and push version updates back to main
+            git add CHANGELOG.md src/__init__.py src/core/updater.py src/core/mcp_manager.py setup.py pyproject.toml
             $hasDiff = git diff --staged --name-only
             if ($hasDiff) {
               git commit -m "chore(release): bump version to $newTag [skip ci]"
-              git tag -a "$newTag" -m "Release $newTag"
-              git push origin main --follow-tags
+              git push origin main
+              git tag -a "$newTag" -m "Release $newTag" -f
               git push origin "$newTag" --force
             }
             "RELEASE_TAG=$newTag" | Out-File -FilePath $env:GITHUB_ENV -Append
@@ -79,6 +83,15 @@ jobs:
             $tag = "${{ github.ref_name }}"
             python scripts/bump_version.py --set-version $tag
             python scripts/bump_version.py --notes $tag --output-file "release_notes.md"
+            python scripts/bump_version.py --update-changelog $tag
+
+            # Ensure main branch receives the version update
+            git add CHANGELOG.md src/__init__.py src/core/updater.py src/core/mcp_manager.py setup.py pyproject.toml
+            $hasDiff = git diff --staged --name-only
+            if ($hasDiff) {
+              git commit -m "chore(release): sync version to $tag [skip ci]"
+              git push origin main
+            }
             "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append
           }
 
@@ -117,7 +130,7 @@ jobs:
           $hasNotes = Test-Path $notesFile
 
           if (gh release view "$tag" 2>$null) {
-            Write-Host "Release $tag exists, uploading artifact..."
+            Write-Host "Release $tag exists, updating release..."
             if ($hasNotes) {
               gh release edit "$tag" --notes-file "$notesFile" --title "MAX $tag"
             }
@@ -130,3 +143,12 @@ jobs:
               gh release create "$tag" "dist/MaxPlusAI.exe" --generate-notes --title "MAX $tag"
             }
           }
+
+          # Write Step Summary
+          $summary = @"
+          ## 🚀 MAX AI Release $tag Published Successfully!
+          - **Tag:** $tag
+          - **Executable:** [MaxPlusAI.exe](https://github.com/${{ github.repository }}/releases/download/$tag/MaxPlusAI.exe)
+          - **All project files updated and pushed back to main automatically by Bot!**
+          "@
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
