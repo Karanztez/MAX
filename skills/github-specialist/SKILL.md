@@ -44,4 +44,3 @@ default: false
 - **Drafting PRs**: สรุปสิ่งที่เปลี่ยนแปลงอย่างกระชับ แบ่งเป็นหมวดหมู่ (Summary, Changes, Verification)
 - **Resolving Conflicts**: วิเคราะห์สาเหตุของ Merge Conflict และเสนอแนวทางแก้ไขที่คงความถูกต้องของทั้งสอง Branch
 - **Issue Triage**: ระบุขั้นตอนการทำซ้ำ (Reproduction Steps), สาเหตุหลัก (Root Cause), และแนวทางการแก้ไขที่ตรงจุด
-
