@@ -26,4 +26,3 @@
 - [GitHub Repository](https://github.com/Karanztez/MAX)
 - [Releases & Changelog](https://github.com/Karanztez/MAX/releases)
 - [License Terms](https://github.com/Karanztez/MAX/blob/main/LICENSE)
-

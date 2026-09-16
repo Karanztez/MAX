@@ -159,4 +159,3 @@ export PATH="$HOME/.local/bin:$PATH"
 ### Q2: GUI ไม่เปิด หรือฟ้อง `_tkinter.TclError: no display name`
 
 **วิธีแก้:** หากคุณเชื่อมต่อผ่าน SSH โดยไม่มี X11 Forwarding จะไม่สามารถเปิด `max-gui` ได้ ให้ใช้โหมด Terminal CLI `max` แทน
-

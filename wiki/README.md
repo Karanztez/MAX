@@ -32,4 +32,3 @@ git add .
 git commit -m "docs(wiki): publish initial wiki documentation"
 git push origin master
 ```
-

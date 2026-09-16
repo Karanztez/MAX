@@ -241,7 +241,7 @@ def get_web_tools() -> dict[str, tuple[MCPTool, Any]]:
                     "properties": {
                         "url": {"type": "string", "description": "URL ปลายทาง"},
                         "method": {"type": "string", "description": "HTTP Method (GET, POST, PUT, DELETE)", "default": "GET"},
-                        "headers": {"type": "object", "description": "HTTP Headers ในรูปแบบ key-value", "default": {}},
+                        "headers": {"type": "object", "description": "HTTP Headers ในรูปแบบ key-value", "additionalProperties": True, "properties": {}, "default": {}},
                         "body": {"type": "string", "description": "เนื้อหา JSON หรือ Payload ในคำขอ", "default": ""},
                         "timeout_seconds": {"type": "integer", "description": "ระยะเวลารอคอยสูงสุดเป็นวินาที", "default": 15},
                     },

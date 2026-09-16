@@ -66,4 +66,3 @@ author: Your Name
 
 - **Global Skills:** `%APPDATA%\max\skills\` (Windows) หรือ `~/.config/max/skills/` (Linux)
 - **Local Project Skills:** `./skills/` ภายในโปรเจกต์ปัจจุบัน
-
