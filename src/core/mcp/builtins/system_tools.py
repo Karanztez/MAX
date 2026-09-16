@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import os
+from pathlib import Path
 import platform
 import re
 import shutil
